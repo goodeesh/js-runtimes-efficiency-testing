@@ -1,10 +1,6 @@
 import * as http from 'node:http'
-import { pbkdf2 } from 'node:crypto';
-import { Worker, parentPort } from 'node:worker_threads';
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { Worker } from 'node:worker_threads';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function fibonacci(n) {
     if (n <= 0) return 0
@@ -56,10 +52,10 @@ const server = http.createServer((req, res) => {
                 return;
             }
 
-            const worker1 = new Worker(`${__dirname}/fibonacci.worker.js`);
-            const worker2 = new Worker(`${__dirname}/fibonacci.worker.js`);
-            const worker3 = new Worker(`${__dirname}/fibonacci.worker.js`);
-            const worker4 = new Worker(`${__dirname}/fibonacci.worker.js`);
+            const worker1 = new Worker(`./fibonacci.worker.js`);
+            const worker2 = new Worker(`./fibonacci.worker.js`);
+            const worker3 = new Worker(`./fibonacci.worker.js`);
+            const worker4 = new Worker(`./fibonacci.worker.js`);
 
             Promise.all([
                 new Promise((resolve) => {
