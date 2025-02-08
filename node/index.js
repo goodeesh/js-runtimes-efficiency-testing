@@ -1,6 +1,8 @@
 import * as http from 'node:http'
+import * as path from 'node:path';
 import { Worker } from 'node:worker_threads';
-
+import * as fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 function fibonacci(n) {
     if (n <= 0) return 0
@@ -83,6 +85,38 @@ const server = http.createServer((req, res) => {
                 res.end(JSON.stringify(values));
             });
             break;
+        case "video-serving":
+            //test focusing on i/o efficiency
+            const __filename = fileURLToPath(import.meta.url);
+            const __dirname = path.dirname(__filename);
+            console.log("video serving endpoint called")
+            const filePath = path.join(__dirname, '../resources/video.mp4');
+            const stat = fs.statSync(filePath);
+            const fileSize = stat.size;
+            const range = req.headers.range;
+            if (range) {
+                const parts = range.replace(/bytes=/, "").split("-");
+                const start = parseInt(parts[0], 10);
+                const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+                const chunksize = (end - start) + 1;
+                const file = fs.createReadStream(filePath, { start, end });
+                const head = {
+                    'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+                    'Accept-Ranges': 'bytes',
+                    'Content-Length': chunksize,
+                    'Content-Type': 'video/mp4',
+                };
+                res.writeHead(206, head);
+                file.pipe(res);
+            } else {
+                const head = {
+                    'Content-Length': fileSize,
+                    'Content-Type': 'video/mp4',
+                };
+                res.writeHead(200, head);
+                fs.createReadStream(filePath).pipe(res);
+            }
+            break; // Add missing break statement
         default:
             res.writeHead(404, { 'Content-Type': 'text/plain' })
             res.end('404 Not Found\n')
