@@ -16,23 +16,21 @@ const server = http.createServer((req, res) => {
     const secondQuery = req.url.split('/')[2]
     switch (firstQuery) {
         case "fibonacci-blocker":
-            //cpu intensive task single thread, block main thread of nodejs
+            // CPU-intensive task on the main thread (blocking)
             console.log("fibonacci endpoint called")
             if (isNaN(secondQuery)) {
-                //only accept number as second parameter
                 res.writeHead(400, { "Content-Type": "text/plain" });
                 res.end("400 Bad Request\n");
                 return;
             }
             res.writeHead(200, { "Content-Type": "text/plain" });
-            res.end(fibonacci(secondQuery).toString());
+            res.end(fibonacci(Number(secondQuery)).toString());
             break;
         case "fibonacci-non-blocking":
-            //cpu intensive task single thread using workers to not block main thread
+            // CPU-intensive task offloaded to a worker thread
             const worker = new Worker("./fibonacci.worker.js");
-            console.log("fibonacci endpoint non blocking called")
+            console.log("fibonacci non-blocking endpoint called")
             if (isNaN(secondQuery)) {
-                //only accept number as second parameter
                 res.writeHead(400, { "Content-Type": "text/plain" });
                 res.end("400 Bad Request\n");
                 return;
@@ -46,14 +44,13 @@ const server = http.createServer((req, res) => {
             }
             break;
         case "fibonacci-parallel":
-            //using same workers idea but with multiple workers
+            // Using multiple worker threads for parallel computation
             console.log("fibonacci parallel endpoint called")
             if (isNaN(secondQuery)) {
                 res.writeHead(400, { "Content-Type": "text/plain" });
                 res.end("400 Bad Request\n");
                 return;
             }
-
             const worker1 = new Worker(`./fibonacci.worker.js`);
             const worker2 = new Worker(`./fibonacci.worker.js`);
             const worker3 = new Worker(`./fibonacci.worker.js`);
@@ -86,7 +83,7 @@ const server = http.createServer((req, res) => {
             });
             break;
         case "video-serving":
-            //test focusing on i/o efficiency
+            // I/O-intensive task for serving video content
             const __filename = fileURLToPath(import.meta.url);
             const __dirname = path.dirname(__filename);
             console.log("video serving endpoint called")
@@ -116,7 +113,38 @@ const server = http.createServer((req, res) => {
                 res.writeHead(200, head);
                 fs.createReadStream(filePath).pipe(res);
             }
-            break; // Add missing break statement
+            break;
+        case "memory-intensive":
+            // Memory-intensive endpoint
+            console.log("memory intensive endpoint called")
+            if (isNaN(secondQuery)) {
+                res.writeHead(400, { "Content-Type": "text/plain" });
+                res.end("400 Bad Request\n");
+                return;
+            }
+            // Use the query parameter as a multiplier for the workload.
+            // For example, a multiplier of 1 creates an array with 10 million numbers.
+            const multiplier = Number(secondQuery);
+            const numElements = multiplier * 10_000_000;
+            console.log(`Allocating an array with ${numElements} elements`);
+
+            try {
+                // Allocate a large array and fill it with random numbers.
+                const largeArray = new Array(numElements);
+                for (let i = 0; i < numElements; i++) {
+                    largeArray[i] = Math.random();
+                }
+                // Perform a heavy operation: sorting the array.
+                largeArray.sort((a, b) => a - b);
+                // Further process: compute the sum of all elements.
+                const total = largeArray.reduce((acc, val) => acc + val, 0);
+                res.writeHead(200, { "Content-Type": "text/plain" });
+                res.end(`Memory intensive operation completed. Sum: ${total}`);
+            } catch (error) {
+                res.writeHead(500, { "Content-Type": "text/plain" });
+                res.end(`Error during memory-intensive operation: ${error.message}`);
+            }
+            break;
         default:
             res.writeHead(404, { 'Content-Type': 'text/plain' })
             res.end('404 Not Found\n')
