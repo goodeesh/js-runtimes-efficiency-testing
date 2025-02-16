@@ -145,6 +145,31 @@ const server = http.createServer((req, res) => {
                 res.end(`Error during memory-intensive operation: ${error.message}`);
             }
             break;
+            case "json-processing":
+                console.log("json-processing endpoint called");
+                // Use the second URL parameter as a multiplier for workload size (default to 1)
+                const jsonMultiplier = Number(secondQuery) || 1;
+                // For example, generate 100,000 objects per multiplier unit
+                const numberOfElements = jsonMultiplier * 100000;
+                console.log(`Generating an array with ${numberOfElements} elements`);
+                
+                // Generate a large array of objects
+                const largeArray = [];
+                for (let i = 0; i < numberOfElements; i++) {
+                    largeArray.push({ id: i, value: Math.random() });
+                }
+                
+                // Serialize the array into a JSON string
+                const jsonString = JSON.stringify(largeArray);
+                
+                // Parse the JSON string back into a JavaScript object
+                const parsedData = JSON.parse(jsonString);
+                
+                // Return the entire parsed JSON as the response
+                res.writeHead(200, { "Content-Type": "application/json" });
+                res.end(JSON.stringify(parsedData));
+                break;
+                  
         default:
             res.writeHead(404, { 'Content-Type': 'text/plain' })
             res.end('404 Not Found\n')
