@@ -6,9 +6,13 @@ export async function createReadStream(
   ): Promise<ReadableStream<Uint8Array>> {
     const file = await Deno.open(filePath);
     const fileInfo = await file.stat();
-  
+    const fileSize = await fileInfo.size;
     const start = options?.start || 0;
-    const end = options?.end || fileInfo.size - 1;
+    const end = options?.end || fileSize - 1;
+
+    if (start >= fileSize || end >= fileSize) {
+        throw new RangeError("Range Not Satisfiable");
+      }
   
     return file.readable.pipeThrough(
       new TransformStream({

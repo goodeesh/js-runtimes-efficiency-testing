@@ -93,9 +93,9 @@ const server = http.createServer((req, res) => {
     }
     case "video-serving": {
       // I/O-intensive task for serving video content
+      console.log("video serving endpoint called");
       const __filename = fileURLToPath(import.meta.url);
       const __dirname = path.dirname(__filename);
-      console.log("video serving endpoint called");
       const filePath = path.join(__dirname, "../resources/video.mp4");
       const stat = fs.statSync(filePath);
       const fileSize = stat.size;
