@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deno-app-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: deno-app
+  template:
+    metadata:
+      labels:
+        app: deno-app
+    spec:
+      containers:
+      - name: deno-app
+        image: goodeesh/my-deno-app:local
+        imagePullPolicy: Never
+        resources:
+          requests:
+            cpu: "100m"  # Request 100 millicores
+            memory: "128Mi"  # Request 128 MiB
+          limits:
+            cpu: "500m"  # Max 500 millicores
+            memory: "256Mi"  # Max 256 MiB
+        ports:
+        - containerPort: 8000

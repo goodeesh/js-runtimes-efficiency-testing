@@ -13,6 +13,13 @@ const apiPattern = new URLPattern({ pathname: "/:endpoint/:param?" });
 export default {
   async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url);
+
+    // Health check endpoint
+    if (url.pathname === '/health') {
+      return new Response('OK', { status: 200 });
+    }
+
+
     const match = apiPattern.exec(url);
 
     if (!match) {

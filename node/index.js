@@ -12,8 +12,17 @@ function fibonacci(n) {
 }
 
 const server = http.createServer((req, res) => {
-  const firstParam = req.url.split("/")[1];
-  const secondParam = req.url.split("/")[2];
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  
+  // Health check endpoint
+  if (url.pathname === '/health') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('OK');
+    return;
+  }
+
+  const firstParam = url.pathname.split('/')[1];
+  const secondParam = url.pathname.split('/')[2];
   switch (firstParam) {
     case "json-small": {
       res.writeHead(200, { "Content-Type": "application/json" });

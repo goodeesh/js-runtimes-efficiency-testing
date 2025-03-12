@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  node-app:
+    build:
+      context: ./node
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"  # Node: 3000->3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+    volumes:
+      - ./node:/app
+      - /app/node_modules
+
+  bun-app:
+    build:
+      context: ./bun
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"  # Bun: 5000->5000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+    volumes:
+      - ./bun:/app
+      - /app/node_modules
+
+  deno-app:
+    build:
+      context: ./deno
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"  # Deno: 8000->8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+    volumes:
+      - ./deno:/app 

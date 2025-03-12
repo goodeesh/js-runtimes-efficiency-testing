@@ -10,9 +10,15 @@ function fibonacci(n: number): number {
 }
 
 const server = serve({
-  port: 3000,
+  port: 5000,
   async fetch(req) {
     const url = new URL(req.url);
+    
+    // Health check endpoint
+    if (url.pathname === '/health') {
+      return new Response('OK', { status: 200 });
+    }
+
     const firstParam = url.pathname.split("/")[1];
     const secondParam = url.pathname.split("/")[2];
 
