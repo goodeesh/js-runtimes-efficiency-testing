@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { Worker } from "node:worker_threads";
 import * as fs from "node:fs";
 import { fileURLToPath } from "node:url";
+import { Database } from "./CRUD.class.js";
 
 function fibonacci(n) {
   if (n <= 0) return 0;
@@ -10,6 +11,7 @@ function fibonacci(n) {
   if (n <= 2) return 2;
   return fibonacci(n - 1) + fibonacci(n - 2);
 }
+const database = new Database();
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -190,6 +192,119 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify(parsedData));
       break;
     }
+    case "insertUser": {
+      console.log("insertUser endpoint called");
+      const body = [];
+      req.on("data", (chunk) => {
+        body.push(chunk);
+      });
+      req.on("end", () => {
+        const parsedBody = JSON.parse(Buffer.concat(body).toString());
+        const { username, password, email, name, surname, age } = parsedBody;
+        if (!username || !password || !email || !name || !surname || !age) {
+          res.writeHead(400, { "Content-Type": "text/plain" });
+          res.end("400 Bad Request\n");
+          return;
+        }
+        database.insertUser(username, password, email, name, surname, age).then(() => {
+          console.log("User inserted successfully");
+          res.writeHead(200, { "Content-Type": "text/plain" });
+          res.end("User inserted successfully\n");
+        })
+        .catch((error) => {
+          console.error("Error inserting user:", error);
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("500 Internal Server Error\n");
+          return;
+        });
+      });
+      break;
+    }
+    case "deleteUser": {
+      console.log("deleteUser endpoint called");
+      const body = [];
+      req.on("data", (chunk) => {
+        body.push(chunk);
+      });
+      req.on("end", () => {
+        const parsedBody = JSON.parse(Buffer.concat(body).toString());
+        const { username } = parsedBody;
+        if (!username) {
+          res.writeHead(400, { "Content-Type": "text/plain" });
+          res.end("400 Bad Request\n");
+          return;
+        }
+        database.deleteUser(username).then(() => {
+          console.log("User deleted successfully");
+          res.writeHead(200, { "Content-Type": "text/plain" });
+          res.end("User deleted successfully\n");
+        })
+        .catch((error) => {
+          console.error("Error deleting user:", error);
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("500 Internal Server Error\n");
+          return;
+        });
+      });
+      break;
+    }
+    case "getUser": {
+      console.log("getUser endpoint called");
+      const body = [];
+      req.on("data", (chunk) => {
+        body.push(chunk);
+      });
+      req.on("end", () => {
+        const parsedBody = JSON.parse(Buffer.concat(body).toString());
+        const { username } = parsedBody;
+        if (!username) {
+          res.writeHead(400, { "Content-Type": "text/plain" });
+          res.end("400 Bad Request\n");
+          return;
+        }
+        database.getUser(username).then((user) => {
+          console.log("User retrieved successfully");
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(user));
+        })
+        .catch((error) => {
+          console.error("Error retrieving user:", error);
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("500 Internal Server Error\n");
+          return;
+        });
+      });
+      break;
+    }
+    case "updateUser": {
+      console.log("updateUser endpoint called");
+      const body = [];
+      req.on("data", (chunk) => {
+        body.push(chunk);
+      });
+      req.on("end", () => {
+        const parsedBody = JSON.parse(Buffer.concat(body).toString());
+        const { username, password, email, name, surname, age } = parsedBody;
+        if (!username || !password || !email || !name || !surname || !age) {
+          res.writeHead(400, { "Content-Type": "text/plain" });
+          res.end("400 Bad Request\n");
+          return;
+        }
+        database.updateUser(username, password, email, name, surname, age).then(() => {
+          console.log("User updated successfully");
+          res.writeHead(200, { "Content-Type": "text/plain" });
+          res.end("User updated successfully\n");
+        })
+        .catch((error) => {
+          console.error("Error updating user:", error);
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("500 Internal Server Error\n");
+          return;
+        });
+      });
+      break;
+    }
+    
 
     default: {
       res.writeHead(404, { "Content-Type": "text/plain" });
