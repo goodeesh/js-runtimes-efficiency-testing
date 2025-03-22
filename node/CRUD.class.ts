@@ -1,5 +1,5 @@
-import { DatabaseSync } from 'node:sqlite';
-import fs from 'fs';
+import BetterSQLite3 from 'better-sqlite3';
+import fs from 'node:fs';
 import crypto from 'node:crypto';
 
 export class Database {
@@ -7,7 +7,7 @@ export class Database {
     constructor() {
         const dbFile = 'db.sqlite';
         const dbExists = fs.existsSync(dbFile);
-        this.#db = new DatabaseSync(dbFile);
+        this.#db = new BetterSQLite3(dbFile);
         if (!dbExists) {
             this.initialize().then(() => {
                 console.log('Database initialized');
@@ -47,6 +47,7 @@ export class Database {
     }
 
     async initialize(): Promise<void> {
+        console.log('Executing SQL statements...');
         // Execute SQL statements from strings.
         await this.#exec(`
         CREATE TABLE users(

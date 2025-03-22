@@ -240,17 +240,12 @@ const server = http.createServer((req, res) => {
     }
     case endpoints.DELETE_USER: {
       console.log("deleteUser endpoint called");
-      const body = [];
+      const body: Uint8Array[] = [];
       req.on("data", (chunk) => {
         body.push(chunk);
       });
       req.on("end", () => {
-        const body: Uint8Array[] = [];
-        req.on("data", (chunk: Uint8Array) => {
-          body.push(chunk);
-        });
-        req.on("end", () => {
-          const parsedBody: { username: string } = JSON.parse(Buffer.concat(body).toString());
+        const parsedBody = JSON.parse(Buffer.concat(body).toString());
         const { username } = parsedBody;
         if (!username) {
           res.writeHead(400, { "Content-Type": "text/plain" });
@@ -269,8 +264,7 @@ const server = http.createServer((req, res) => {
           return;
         });
       });
-    });
-    break;
+      break;
     }
     case endpoints.GET_USER: {
       console.log("getUser endpoint called");
