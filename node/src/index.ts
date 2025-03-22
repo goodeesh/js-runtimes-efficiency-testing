@@ -2,7 +2,6 @@ import * as http from "node:http";
 import * as path from "node:path";
 import { Worker } from "node:worker_threads";
 import * as fs from "node:fs";
-import { fileURLToPath } from "node:url";
 import { Database } from "./CRUD.class";
 
 enum endpoints {
@@ -64,8 +63,8 @@ const server = http.createServer((req, res) => {
     }
     case endpoints.FIBONACCI_NON_BLOCKING: {
       // CPU-intensive task offloaded to a worker thread
-      const worker = new Worker("./fibonacci.worker.js");
       console.log("fibonacci non-blocking endpoint called");
+      const worker = new Worker(path.join(__dirname, "fibonacci.worker.js"));
       if (isNaN(Number(secondParam))) {
         res.writeHead(400, { "Content-Type": "text/plain" });
         res.end("400 Bad Request\n");
@@ -89,10 +88,10 @@ const server = http.createServer((req, res) => {
         res.end("400 Bad Request\n");
         return;
       }
-      const worker1 = new Worker(`./fibonacci.worker.js`);
-      const worker2 = new Worker(`./fibonacci.worker.js`);
-      const worker3 = new Worker(`./fibonacci.worker.js`);
-      const worker4 = new Worker(`./fibonacci.worker.js`);
+      const worker1 = new Worker(path.join(__dirname, "fibonacci.worker.js"));
+      const worker2 = new Worker(path.join(__dirname, "fibonacci.worker.js"));
+      const worker3 = new Worker(path.join(__dirname, "fibonacci.worker.js"));
+      const worker4 = new Worker(path.join(__dirname, "fibonacci.worker.js"));
 
       Promise.all([
         new Promise((resolve) => {

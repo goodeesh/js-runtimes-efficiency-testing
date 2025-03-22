@@ -6,8 +6,8 @@
       "esModuleInterop": true,
       "outDir": "./dist",
       "strict": true,
-      "types": ["node"]
+      "types": ["node"],
     },
-    "include": ["**/*.ts"],
+    "include": ["**/*.ts", "src/fibonacci.worker.js"],
     "exclude": ["node_modules"]
   }
