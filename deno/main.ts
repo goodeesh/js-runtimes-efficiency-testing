@@ -7,6 +7,20 @@ function fibonacci(n: number): number {
   return fibonacci(n - 1) + fibonacci(n - 2);
 }
 
+enum endpoints {
+  JSON_SMALL = "json-small",
+  FIBONACCI_BLOCKER = "fibonacci-blocker",
+  FIBONACCI_NON_BLOCKING = "fibonacci-non-blocking",
+  FIBONACCI_PARALLEL = "fibonacci-parallel",
+  VIDEO_SERVING = "video-serving",
+  MEMORY_INTENSIVE = "memory-intensive",
+  JSON_PROCESSING = "json-processing",
+  INSERT_USER = "insertUser",
+  DELETE_USER = "deleteUser",
+  GET_USER = "getUser",
+  UPDATE_USER = "updateUser"
+}
+
 // Define URL patterns
 const apiPattern = new URLPattern({ pathname: "/:endpoint/:param?" });
 
@@ -178,9 +192,15 @@ export default {
           headers: { "Content-Type": "application/json" },
         });
       }
-
       default: {
-        return new Response("Not found", { status: 404 });
+        const endpointsList = Object.values(endpoints)
+          .map(endpoint => `- /${endpoint}`)
+          .join("\n");
+        
+        return new Response(`404 Not Found\n\nThe available endpoints are:\n${endpointsList}\n- /health (server health check)`, {
+          status: 404,
+          headers: { "Content-Type": "text/plain" }
+        });
       }
     }
   },
