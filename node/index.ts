@@ -3,9 +3,23 @@ import * as path from "node:path";
 import { Worker } from "node:worker_threads";
 import * as fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import { Database } from "./CRUD.class.js";
+import { Database } from "./CRUD.class";
 
-function fibonacci(n) {
+enum endpoints {
+  JSON_SMALL = "json-small",
+  FIBONACCI_BLOCKER = "fibonacci-blocker",
+  FIBONACCI_NON_BLOCKING = "fibonacci-non-blocking",
+  FIBONACCI_PARALLEL = "fibonacci-parallel",
+  VIDEO_SERVING = "video-serving",
+  MEMORY_INTENSIVE = "memory-intensive",
+  JSON_PROCESSING = "json-processing",
+  INSERT_USER = "insertUser",
+  DELETE_USER = "deleteUser",
+  GET_USER = "getUser",
+  UPDATE_USER = "updateUser"
+}
+
+function fibonacci(n: number): number {
   if (n <= 0) return 0;
   if (n <= 1) return 1;
   if (n <= 2) return 2;
@@ -14,6 +28,11 @@ function fibonacci(n) {
 const database = new Database();
 
 const server = http.createServer((req, res) => {
+  if (!req.url) {
+    res.writeHead(400, { "Content-Type": "text/plain" });
+    res.end("400 Bad Request\n");
+    return;
+  }
   const url = new URL(req.url, `http://${req.headers.host}`);
   
   // Health check endpoint
@@ -26,15 +45,15 @@ const server = http.createServer((req, res) => {
   const firstParam = url.pathname.split('/')[1];
   const secondParam = url.pathname.split('/')[2];
   switch (firstParam) {
-    case "json-small": {
+    case endpoints.JSON_SMALL: {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ message: "Hello World!" }));
       break;
     }
-    case "fibonacci-blocker": {
+    case endpoints.FIBONACCI_BLOCKER: {
       // CPU-intensive task on the main thread (blocking)
       console.log("fibonacci endpoint called");
-      if (isNaN(secondParam)) {
+      if (isNaN(Number(secondParam))) {
         res.writeHead(400, { "Content-Type": "text/plain" });
         res.end("400 Bad Request\n");
         return;
@@ -43,11 +62,11 @@ const server = http.createServer((req, res) => {
       res.end(fibonacci(Number(secondParam)).toString());
       break;
     }
-    case "fibonacci-non-blocking": {
+    case endpoints.FIBONACCI_NON_BLOCKING: {
       // CPU-intensive task offloaded to a worker thread
       const worker = new Worker("./fibonacci.worker.js");
       console.log("fibonacci non-blocking endpoint called");
-      if (isNaN(secondParam)) {
+      if (isNaN(Number(secondParam))) {
         res.writeHead(400, { "Content-Type": "text/plain" });
         res.end("400 Bad Request\n");
         return;
@@ -55,17 +74,17 @@ const server = http.createServer((req, res) => {
       worker.on("message", resolve);
       worker.postMessage(secondParam);
       // deno-lint-ignore no-inner-declarations
-      function resolve(result) {
+      function resolve(result: number) {
         worker.terminate();
         res.writeHead(200, { "Content-Type": "text/plain" });
         res.end(result.toString());
       }
       break;
     }
-    case "fibonacci-parallel": {
+    case endpoints.FIBONACCI_PARALLEL: {
       // Using multiple worker threads for parallel computation
       console.log("fibonacci parallel endpoint called");
-      if (isNaN(secondParam)) {
+      if (isNaN(Number(secondParam))) {
         res.writeHead(400, { "Content-Type": "text/plain" });
         res.end("400 Bad Request\n");
         return;
@@ -82,15 +101,15 @@ const server = http.createServer((req, res) => {
         }),
         new Promise((resolve) => {
           worker2.on("message", resolve);
-          worker2.postMessage(secondParam - 1);
+          worker2.postMessage(Number(secondParam) - 1);
         }),
         new Promise((resolve) => {
           worker3.on("message", resolve);
-          worker3.postMessage(secondParam - 2);
+          worker3.postMessage(Number(secondParam) - 2);
         }),
         new Promise((resolve) => {
           worker4.on("message", resolve);
-          worker4.postMessage(secondParam - 3);
+          worker4.postMessage(Number(secondParam) - 3);
         }),
       ]).then((values) => {
         worker1.terminate();
@@ -102,11 +121,10 @@ const server = http.createServer((req, res) => {
       });
       break;
     }
-    case "video-serving": {
+    case endpoints.VIDEO_SERVING: {
       // I/O-intensive task for serving video content
       console.log("video serving endpoint called");
-      const __filename = fileURLToPath(import.meta.url);
-      const __dirname = path.dirname(__filename);
+      const __dirname = path.resolve();
       const filePath = path.join(__dirname, "../resources/video.mp4");
       const stat = fs.statSync(filePath);
       const fileSize = stat.size;
@@ -135,17 +153,17 @@ const server = http.createServer((req, res) => {
       }
       break;
     }
-    case "memory-intensive": {
+    case endpoints.MEMORY_INTENSIVE: {
       // Memory-intensive endpoint
       console.log("memory intensive endpoint called");
-      if (isNaN(secondQuery)) {
+      if (isNaN(Number(secondParam))) {
         res.writeHead(400, { "Content-Type": "text/plain" });
         res.end("400 Bad Request\n");
         return;
       }
       // Use the query parameter as a multiplier for the workload.
       // For example, a multiplier of 1 creates an array with 10 million numbers.
-      const multiplier = Number(secondQuery);
+      const multiplier = Number(secondParam);
       const numElements = multiplier * 10_000_000;
       console.log(`Allocating an array with ${numElements} elements`);
 
@@ -163,14 +181,14 @@ const server = http.createServer((req, res) => {
         res.end(`Memory intensive operation completed. Sum: ${total}`);
       } catch (error) {
         res.writeHead(500, { "Content-Type": "text/plain" });
-        res.end(`Error during memory-intensive operation: ${error.message}`);
+        res.end(`Error during memory-intensive operation: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
       break;
     }
-    case "json-processing": {
+    case endpoints.JSON_PROCESSING: {
       console.log("json-processing endpoint called");
       // Use the second URL parameter as a multiplier for workload size (default to 1)
-      const jsonMultiplier = Number(secondQuery) || 1;
+      const jsonMultiplier = Number(secondParam) || 1;
       // For example, generate 100,000 objects per multiplier unit
       const numberOfElements = jsonMultiplier * 100000;
       console.log(`Generating an array with ${numberOfElements} elements`);
@@ -192,9 +210,9 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify(parsedData));
       break;
     }
-    case "insertUser": {
+    case endpoints.INSERT_USER: {
       console.log("insertUser endpoint called");
-      const body = [];
+      const body: Uint8Array[] = [];
       req.on("data", (chunk) => {
         body.push(chunk);
       });
@@ -220,14 +238,19 @@ const server = http.createServer((req, res) => {
       });
       break;
     }
-    case "deleteUser": {
+    case endpoints.DELETE_USER: {
       console.log("deleteUser endpoint called");
       const body = [];
       req.on("data", (chunk) => {
         body.push(chunk);
       });
       req.on("end", () => {
-        const parsedBody = JSON.parse(Buffer.concat(body).toString());
+        const body: Uint8Array[] = [];
+        req.on("data", (chunk: Uint8Array) => {
+          body.push(chunk);
+        });
+        req.on("end", () => {
+          const parsedBody: { username: string } = JSON.parse(Buffer.concat(body).toString());
         const { username } = parsedBody;
         if (!username) {
           res.writeHead(400, { "Content-Type": "text/plain" });
@@ -246,11 +269,12 @@ const server = http.createServer((req, res) => {
           return;
         });
       });
-      break;
+    });
+    break;
     }
-    case "getUser": {
+    case endpoints.GET_USER: {
       console.log("getUser endpoint called");
-      const body = [];
+      const body: Uint8Array[] = [];
       req.on("data", (chunk) => {
         body.push(chunk);
       });
@@ -276,9 +300,9 @@ const server = http.createServer((req, res) => {
       });
       break;
     }
-    case "updateUser": {
+    case endpoints.UPDATE_USER: {
       console.log("updateUser endpoint called");
-      const body = [];
+      const body: Uint8Array[] = [];
       req.on("data", (chunk) => {
         body.push(chunk);
       });
@@ -290,7 +314,7 @@ const server = http.createServer((req, res) => {
           res.end("400 Bad Request\n");
           return;
         }
-        database.updateUser(username, password, email, name, surname, age).then(() => {
+        database.updateUser(username, password).then(() => {
           console.log("User updated successfully");
           res.writeHead(200, { "Content-Type": "text/plain" });
           res.end("User updated successfully\n");
@@ -308,7 +332,11 @@ const server = http.createServer((req, res) => {
 
     default: {
       res.writeHead(404, { "Content-Type": "text/plain" });
-      res.end("404 Not Found\n");
+      const endpointsList = Object.values(endpoints)
+        .map(endpoint => `- /${endpoint}`)
+        .join("\n");
+      
+      res.end(`404 Not Found\n\nThe available endpoints are:\n${endpointsList}\n- /health (server health check)`);
       break;
     }
   }
