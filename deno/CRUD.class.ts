@@ -1,43 +1,43 @@
-import { DB } from "https://deno.land/x/sqlite@v3.8/mod.ts";
-import { crypto } from "https://deno.land/std@0.215.0/crypto/mod.ts";
+import { Database as SQLite3Database, Statement } from "https://deno.land/x/sqlite3@0.12.0/mod.ts";
 import { encodeHex } from "https://deno.land/std@0.215.0/encoding/hex.ts";
 import { existsSync } from "https://deno.land/std@0.215.0/fs/exists.ts";
 
 export class Database {
-  #db: DB;
+  #db: SQLite3Database;
   
   constructor() {
     const dbFile = 'db.sqlite';
     const dbExists = existsSync(dbFile);
-    this.#db = new DB(dbFile);
+    this.#db = new SQLite3Database(dbFile);
     
     if (!dbExists) {
-      this.initialize().then(() => {
+      try {
+        this.initialize();
         console.log('Database initialized');
-      }).catch((error) => {
+      } catch (error) {
         console.error('Error initializing database:', error);
-      });
+      }
     }
   }
 
   #exec(sql: string): void {
-    this.#db.execute(sql);
+    this.#db.exec(sql);
   }
 
-  #prepare(sql: string): any {
-    return this.#db.prepareQuery(sql);
+  #prepare(sql: string): Statement {
+    return this.#db.prepare(sql);
   }
 
   #close(): void {
     this.#db.close();
   }
 
-  #all(): any[] {
-    const query = this.#prepare(`SELECT * FROM users ORDER BY key`);
-    return query.allEntries();
+  #all(): Statement[] {
+    const stmt = this.#prepare(`SELECT * FROM users ORDER BY key`);
+    return stmt.all();
   }
 
-  async #insert(sql: string, ...params: any[]): Promise<void> {
+  async #insert(sql: string, ...params: Statement[]): Promise<void> {
     // hash the password
     if (params[2]) {
       const hashBuffer = await crypto.subtle.digest(
@@ -48,11 +48,11 @@ export class Database {
     }
     
     // prepare the statement
-    const query = this.#prepare(sql);
-    query.execute(params);
+    const stmt = this.#prepare(sql);
+    stmt.run(...params);
   }
 
-  async initialize(): Promise<void> {
+  initialize(): void {
     console.log('Executing SQL statements...');
     // Execute SQL statements from strings.
     this.#exec(`
@@ -97,9 +97,9 @@ export class Database {
       key, username, hash, email, name, surname, age);
   }
 
-  async getUser(username: string): Promise<any | null> {
-    const query = this.#prepare('SELECT * FROM users WHERE username = ?');
-    const result = query.firstEntry([username]);
+  getUser(username: string): Statement | null {
+    const stmt = this.#prepare('SELECT * FROM users WHERE username = ?');
+    const result = stmt.get(username);
     return result || null;
   }
 
@@ -110,12 +110,12 @@ export class Database {
     );
     const hash = encodeHex(hashBuffer);
     
-    const query = this.#prepare('UPDATE users SET password = ? WHERE username = ?');
-    query.execute([hash, username]);
+    const stmt = this.#prepare('UPDATE users SET password = ? WHERE username = ?');
+    stmt.run(hash, username);
   }
 
-  async deleteUser(username: string): Promise<void> {
-    const query = this.#prepare('DELETE FROM users WHERE username = ?');
-    query.execute([username]);
+  deleteUser(username: string): void {
+    const stmt = this.#prepare('DELETE FROM users WHERE username = ?');
+    stmt.run(username);
   }
 }
