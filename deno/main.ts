@@ -1,4 +1,5 @@
 import { createReadStream } from "./createReadStream.ts";
+import { Database } from "./CRUD.class.ts";
 
 function fibonacci(n: number): number {
   if (n <= 0) return 0;
@@ -23,6 +24,7 @@ enum endpoints {
 
 // Define URL patterns
 const apiPattern = new URLPattern({ pathname: "/:endpoint/:param?" });
+const database = new Database();
 
 export default {
   async fetch(req: Request): Promise<Response> {
@@ -33,23 +35,30 @@ export default {
       return new Response('OK', { status: 200 });
     }
 
-
     const match = apiPattern.exec(url);
+    const endpointsList = Object.values(endpoints)
+          .map(endpoint => `- /${endpoint}`)
+          .join("\n");
+        
+    const failResponse = new Response(`404 Not Found\n\nThe available endpoints are:\n${endpointsList}\n- /health (server health check)`, {
+        status: 404,
+        headers: { "Content-Type": "text/plain" }
+    });
 
     if (!match) {
-      return new Response("Not found", { status: 404 });
+      return failResponse
     }
 
     const { endpoint, param } = match.pathname.groups;
 
     switch (endpoint) {
-      case "json-small": {
+      case endpoints.JSON_SMALL: {
         return new Response(JSON.stringify({ message: "Hello World!" }), {
           headers: { "Content-Type": "application/json" },
         });
       }
 
-      case "fibonacci-blocker": {
+      case endpoints.FIBONACCI_BLOCKER: {
         console.log("fibonacci endpoint called");
         if (isNaN(Number(param))) {
           return new Response("400 Bad Request\n", {
@@ -62,7 +71,7 @@ export default {
         });
       }
 
-      case "fibonacci-non-blocking": {
+      case endpoints.FIBONACCI_NON_BLOCKING: {
         console.log("fibonacci non-blocking endpoint called");
         if (isNaN(Number(param))) {
           return new Response("400 Bad Request\n", {
@@ -83,7 +92,7 @@ export default {
         });
       }
 
-      case "fibonacci-parallel": {
+      case endpoints.FIBONACCI_PARALLEL: {
         console.log("fibonacci parallel endpoint called");
         if (isNaN(Number(param))) {
           return new Response("400 Bad Request\n", {
@@ -113,7 +122,7 @@ export default {
         });
       }
 
-      case "video-serving": {
+      case endpoints.VIDEO_SERVING: {
         console.log("video serving endpoint called");
         const filePath = new URL("../resources/video.mp4", import.meta.url);
         const file = await Deno.open(filePath);
@@ -143,7 +152,7 @@ export default {
         }
       }
 
-      case "memory-intensive": {
+      case endpoints.MEMORY_INTENSIVE: {
         console.log("memory intensive endpoint called");
         if (isNaN(Number(param))) {
           return new Response("400 Bad Request\n", {
@@ -174,7 +183,7 @@ export default {
         }
       }
 
-      case "json-processing": {
+      case endpoints.JSON_PROCESSING: {
         console.log("json-processing endpoint called");
         const jsonMultiplier = Number(param) || 1;
         const numberOfElements = jsonMultiplier * 100000;
@@ -192,15 +201,121 @@ export default {
           headers: { "Content-Type": "application/json" },
         });
       }
+
+      case endpoints.INSERT_USER: {
+        console.log("insertUser endpoint called");
+        try {
+          const body = await req.json();
+          const { username, password, email, name, surname, age } = body;
+          
+          if (!username || !password || !email || !name || !surname || !age) {
+            return new Response("400 Bad Request\n", {
+              status: 400,
+              headers: { "Content-Type": "text/plain" },
+            });
+          }
+          
+          await database.insertUser(username, password, email, name, surname, age);
+          console.log("User inserted successfully");
+          
+          return new Response("User inserted successfully\n", {
+            headers: { "Content-Type": "text/plain" },
+          });
+        } catch (error) {
+          console.error("Error inserting user:", error);
+          return new Response("500 Internal Server Error\n", {
+            status: 500,
+            headers: { "Content-Type": "text/plain" },
+          });
+        }
+      }
+
+      case endpoints.GET_USER: {
+        console.log("getUser endpoint called");
+        try {
+          const body = await req.json();
+          const { username } = body;
+          
+          if (!username) {
+            return new Response("400 Bad Request\n", {
+              status: 400,
+              headers: { "Content-Type": "text/plain" },
+            });
+          }
+          
+          const user = database.getUser(username);
+          console.log("User retrieved successfully");
+          
+          return new Response(JSON.stringify(user), {
+            headers: { "Content-Type": "application/json" },
+          });
+        } catch (error) {
+          console.error("Error retrieving user:", error);
+          return new Response("500 Internal Server Error\n", {
+            status: 500,
+            headers: { "Content-Type": "text/plain" },
+          });
+        }
+      }
+
+      case endpoints.UPDATE_USER: {
+        console.log("updateUser endpoint called");
+        try {
+          const body = await req.json();
+          const { username, password } = body;
+          
+          if (!username || !password) {
+            return new Response("400 Bad Request\n", {
+              status: 400,
+              headers: { "Content-Type": "text/plain" },
+            });
+          }
+          
+          await database.updateUser(username, password);
+          console.log("User updated successfully");
+          
+          return new Response("User updated successfully\n", {
+            headers: { "Content-Type": "text/plain" },
+          });
+        } catch (error) {
+          console.error("Error updating user:", error);
+          return new Response("500 Internal Server Error\n", {
+            status: 500,
+            headers: { "Content-Type": "text/plain" },
+          });
+        }
+      }
+
+      case endpoints.DELETE_USER: {
+        console.log("deleteUser endpoint called");
+        try {
+          const body = await req.json();
+          const { username } = body;
+          
+          if (!username) {
+            return new Response("400 Bad Request\n", {
+              status: 400,
+              headers: { "Content-Type": "text/plain" },
+            });
+          }
+          
+          database.deleteUser(username);
+          console.log("User deleted successfully");
+          
+          return new Response("User deleted successfully\n", {
+            headers: { "Content-Type": "text/plain" },
+          });
+        } catch (error) {
+          console.error("Error deleting user:", error);
+          return new Response("500 Internal Server Error\n", {
+            status: 500,
+            headers: { "Content-Type": "text/plain" },
+          });
+        }
+      }
+
       default: {
-        const endpointsList = Object.values(endpoints)
-          .map(endpoint => `- /${endpoint}`)
-          .join("\n");
-        
-        return new Response(`404 Not Found\n\nThe available endpoints are:\n${endpointsList}\n- /health (server health check)`, {
-          status: 404,
-          headers: { "Content-Type": "text/plain" }
-        });
+        return failResponse
       }
     }
   },

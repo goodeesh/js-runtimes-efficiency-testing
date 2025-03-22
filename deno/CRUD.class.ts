@@ -37,7 +37,7 @@ export class Database {
     return stmt.all();
   }
 
-  async #insert(sql: string, ...params: Statement[]): Promise<void> {
+  async #insert(sql: string, ...params: string[]): Promise<void> {
     // hash the password
     if (params[2]) {
       const hashBuffer = await crypto.subtle.digest(
@@ -94,13 +94,13 @@ export class Database {
     const hash = encodeHex(hashBuffer);
     
     await this.#insert('INSERT INTO users (key, username, password, email, name, surname, age) VALUES (?, ?, ?, ?, ?, ?, ?)', 
-      key, username, hash, email, name, surname, age);
+      key, username, hash, email, name, surname, age.toString());
   }
 
-  getUser(username: string): Statement | null {
+  getUser(username: string) {
     const stmt = this.#prepare('SELECT * FROM users WHERE username = ?');
     const result = stmt.get(username);
-    return result || null;
+    return result ?? null;
   }
 
   async updateUser(username: string, newPassword: string): Promise<void> {
