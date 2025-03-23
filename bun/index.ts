@@ -1,6 +1,7 @@
 // index.ts
 import { serve } from "bun";
 import { createReadStream } from "./createReadStream";
+import { Database } from "./CRUD.class";
 
 function fibonacci(n: number): number {
   if (n <= 0) return 0;
@@ -8,6 +9,22 @@ function fibonacci(n: number): number {
   if (n <= 2) return 2;
   return fibonacci(n - 1) + fibonacci(n - 2);
 }
+
+enum endpoints {
+  JSON_SMALL = "json-small",
+  FIBONACCI_BLOCKER = "fibonacci-blocker",
+  FIBONACCI_NON_BLOCKING = "fibonacci-non-blocking",
+  FIBONACCI_PARALLEL = "fibonacci-parallel",
+  VIDEO_SERVING = "video-serving",
+  MEMORY_INTENSIVE = "memory-intensive",
+  JSON_PROCESSING = "json-processing",
+  INSERT_USER = "insertUser",
+  DELETE_USER = "deleteUser",
+  GET_USER = "getUser",
+  UPDATE_USER = "updateUser"
+}
+
+const database = new Database();
 
 const server = serve({
   port: 5000,
@@ -22,14 +39,24 @@ const server = serve({
     const firstParam = url.pathname.split("/")[1];
     const secondParam = url.pathname.split("/")[2];
 
+    // Improved 404 response with endpoint list
+    const endpointsList = Object.values(endpoints)
+      .map(endpoint => `- /${endpoint}`)
+      .join("\n");
+      
+    const notFoundResponse = new Response(`404 Not Found\n\nThe available endpoints are:\n${endpointsList}\n- /health (server health check)`, {
+      status: 404,
+      headers: { "Content-Type": "text/plain" }
+    });
+
     switch (firstParam) {
-      case "json-small": {
+      case endpoints.JSON_SMALL: {
         return new Response(JSON.stringify({ message: "Hello World!" }), {
           headers: { "Content-Type": "application/json" },
         });
       }
 
-      case "fibonacci-blocker": {
+      case endpoints.FIBONACCI_BLOCKER: {
         // CPU-intensive task on the main thread (blocking)
         console.log("fibonacci endpoint called");
         if (isNaN(Number(secondParam))) {
@@ -41,7 +68,7 @@ const server = serve({
         });
       }
 
-      case "fibonacci-non-blocking": {
+      case endpoints.FIBONACCI_NON_BLOCKING: {
         // CPU-intensive task offloaded to a worker thread
         console.log("fibonacci non-blocking endpoint called");
         if (isNaN(Number(secondParam))) {
@@ -60,7 +87,7 @@ const server = serve({
         });
       }
 
-      case "fibonacci-parallel": {
+      case endpoints.FIBONACCI_PARALLEL: {
         // Using multiple worker threads for parallel computation
         console.log("fibonacci parallel endpoint called");
         if (isNaN(Number(secondParam))) {
@@ -99,7 +126,7 @@ const server = serve({
           headers: { "Content-Type": "text/plain" },
         });
       }
-      case "video-serving": {
+      case endpoints.VIDEO_SERVING: {
         console.log("video serving endpoint called");
         const filePath = "../resources/video.mp4";
         const file = Bun.file(filePath);
@@ -146,7 +173,7 @@ const server = serve({
         }
       }
 
-      case "memory-intensive": {
+      case endpoints.MEMORY_INTENSIVE: {
         // Memory-intensive endpoint
         console.log("memory intensive endpoint called");
         if (isNaN(Number(secondParam))) {
@@ -174,7 +201,7 @@ const server = serve({
         }
       }
 
-      case "json-processing": {
+      case endpoints.JSON_PROCESSING: {
         console.log("json-processing endpoint called");
         const jsonMultiplier = Number(secondParam) || 1;
         const numberOfElements = jsonMultiplier * 100000;
@@ -193,8 +220,121 @@ const server = serve({
         });
       }
 
+      // New database-related endpoints
+      case endpoints.INSERT_USER: {
+        console.log("insertUser endpoint called");
+        try {
+          const body = await req.json();
+          const { username, password, email, name, surname, age } = body;
+          
+          if (!username || !password || !email || !name || !surname || !age) {
+            return new Response("400 Bad Request\n", {
+              status: 400,
+              headers: { "Content-Type": "text/plain" },
+            });
+          }
+          
+          await database.insertUser(username, password, email, name, surname, age);
+          console.log("User inserted successfully");
+          
+          return new Response("User inserted successfully\n", {
+            headers: { "Content-Type": "text/plain" },
+          });
+        } catch (error) {
+          console.error("Error inserting user:", error);
+          return new Response("500 Internal Server Error\n", {
+            status: 500,
+            headers: { "Content-Type": "text/plain" },
+          });
+        }
+      }
+
+      case endpoints.GET_USER: {
+        console.log("getUser endpoint called");
+        try {
+          const body = await req.json();
+          const { username } = body;
+          
+          if (!username) {
+            return new Response("400 Bad Request\n", {
+              status: 400,
+              headers: { "Content-Type": "text/plain" },
+            });
+          }
+          
+          const user = database.getUser(username);
+          console.log("User retrieved successfully");
+          
+          return new Response(JSON.stringify(user), {
+            headers: { "Content-Type": "application/json" },
+          });
+        } catch (error) {
+          console.error("Error retrieving user:", error);
+          return new Response("500 Internal Server Error\n", {
+            status: 500,
+            headers: { "Content-Type": "text/plain" },
+          });
+        }
+      }
+
+      case endpoints.UPDATE_USER: {
+        console.log("updateUser endpoint called");
+        try {
+          const body = await req.json();
+          const { username, password } = body;
+          
+          if (!username || !password) {
+            return new Response("400 Bad Request\n", {
+              status: 400,
+              headers: { "Content-Type": "text/plain" },
+            });
+          }
+          
+          await database.updateUser(username, password);
+          console.log("User updated successfully");
+          
+          return new Response("User updated successfully\n", {
+            headers: { "Content-Type": "text/plain" },
+          });
+        } catch (error) {
+          console.error("Error updating user:", error);
+          return new Response("500 Internal Server Error\n", {
+            status: 500,
+            headers: { "Content-Type": "text/plain" },
+          });
+        }
+      }
+
+      case endpoints.DELETE_USER: {
+        console.log("deleteUser endpoint called");
+        try {
+          const body = await req.json();
+          const { username } = body;
+          
+          if (!username) {
+            return new Response("400 Bad Request\n", {
+              status: 400,
+              headers: { "Content-Type": "text/plain" },
+            });
+          }
+          
+          database.deleteUser(username);
+          console.log("User deleted successfully");
+          
+          return new Response("User deleted successfully\n", {
+            headers: { "Content-Type": "text/plain" },
+          });
+        } catch (error) {
+          console.error("Error deleting user:", error);
+          return new Response("500 Internal Server Error\n", {
+            status: 500,
+            headers: { "Content-Type": "text/plain" },
+          });
+        }
+      }
+
       default: {
-        return new Response("404 Not Found\n", { status: 404 });
+        return notFoundResponse;
       }
     }
   },
