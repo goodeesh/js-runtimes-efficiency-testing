@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp src/fibonacci.worker.js dist/",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts"
   },

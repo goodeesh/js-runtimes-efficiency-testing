@@ -128,7 +128,7 @@ const server = serve({
       }
       case endpoints.VIDEO_SERVING: {
         console.log("video serving endpoint called");
-        const filePath = "../resources/video.mp4";
+        const filePath = "./resources/video.mp4";
         const file = Bun.file(filePath);
         const fileSize = (await file.size);
       
@@ -180,7 +180,7 @@ const server = serve({
           return new Response("400 Bad Request\n", { status: 400 });
         }
         const multiplier = Number(secondParam);
-        const numElements = multiplier * 10_000_000;
+        const numElements = multiplier * 1_000_000;
         console.log(`Allocating an array with ${numElements} elements`);
 
         try {

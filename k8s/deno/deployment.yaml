@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: deno-app-deployment
 spec:
-  replicas: 2
+  replicas: 3  # Increase replicas
   selector:
     matchLabels:
       app: deno-app
@@ -18,10 +18,22 @@ spec:
         imagePullPolicy: Never
         resources:
           requests:
-            cpu: "100m"  # Request 100 millicores
-            memory: "128Mi"  # Request 128 MiB
+            cpu: "1000m"
+            memory: "256Mi"  # Increase memory request
           limits:
-            cpu: "500m"  # Max 500 millicores
-            memory: "256Mi"  # Max 256 MiB
+            cpu: "2000m"
+            memory: "512Mi"    # Significantly increase memory limit
         ports:
         - containerPort: 8000
+        startupProbe:        # Add startup probe
+          httpGet:
+            path: /health
+            port: 8000
+          failureThreshold: 30
+          periodSeconds: 10
+        livenessProbe:       # Add liveness probe
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 20

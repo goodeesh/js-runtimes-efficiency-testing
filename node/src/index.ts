@@ -124,7 +124,7 @@ const server = http.createServer((req, res) => {
       // I/O-intensive task for serving video content
       console.log("video serving endpoint called");
       const __dirname = path.resolve();
-      const filePath = path.join(__dirname, "../resources/video.mp4");
+      const filePath = path.join(__dirname, "./resources/video.mp4");
       const stat = fs.statSync(filePath);
       const fileSize = stat.size;
       const range = req.headers.range;
@@ -163,7 +163,7 @@ const server = http.createServer((req, res) => {
       // Use the query parameter as a multiplier for the workload.
       // For example, a multiplier of 1 creates an array with 10 million numbers.
       const multiplier = Number(secondParam);
-      const numElements = multiplier * 10_000_000;
+      const numElements = multiplier * 1_000_000;
       console.log(`Allocating an array with ${numElements} elements`);
 
       try {

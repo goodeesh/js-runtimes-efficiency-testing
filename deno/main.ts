@@ -124,7 +124,7 @@ export default {
 
       case endpoints.VIDEO_SERVING: {
         console.log("video serving endpoint called");
-        const filePath = new URL("../resources/video.mp4", import.meta.url);
+        const filePath = new URL("./resources/video.mp4", import.meta.url);
         const file = await Deno.open(filePath);
         const fileInfo = await file.stat();
         const rangeHeader = req.headers.get("range");
@@ -162,7 +162,7 @@ export default {
         }
 
         const multiplier = Number(param);
-        const numElements = multiplier * 10_000_000;
+        const numElements = multiplier * 1_000_000;
         console.log(`Allocating an array with ${numElements} elements`);
 
         try {

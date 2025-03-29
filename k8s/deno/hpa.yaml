@@ -8,11 +8,17 @@ spec:
     kind: Deployment
     name: deno-app-deployment
   minReplicas: 2
-  maxReplicas: 10
+  maxReplicas: 8
   metrics:
   - type: Resource
     resource:
       name: cpu
       target:
         type: Utilization
-        averageUtilization: 50  # Target 50% CPU utilization
+        averageUtilization: 90
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 90

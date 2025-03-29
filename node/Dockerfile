@@ -20,11 +20,14 @@ RUN npm install
 # Copy the local code to the container image
 COPY ./src ./src
 
+# Copy the resources folder to the container image
+COPY ./resources ./resources
+
+# Build TypeScript code (this generates the dist directory)
+RUN npm run build
+
 # Delete node_modules and reinstall for the container environment
 RUN rm -rf node_modules && npm install && npm rebuild better-sqlite3
-
-# Build TypeScript code
-RUN npm run build
 
 # Expose the port the app runs on
 EXPOSE 3000
