@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: deno-app-deployment
 spec:
-  replicas: 3  # Increase replicas
+  replicas: 2  # Increase replicas
   selector:
     matchLabels:
       app: deno-app

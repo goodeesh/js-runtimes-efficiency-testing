@@ -154,29 +154,28 @@ export default {
 
       case endpoints.MEMORY_INTENSIVE: {
         console.log("memory intensive endpoint called");
-        if (isNaN(Number(param))) {
-          return new Response("400 Bad Request\n", {
-            status: 400,
-            headers: { "Content-Type": "text/plain" },
-          });
-        }
-
-        const multiplier = Number(param);
-        const numElements = multiplier * 1_000_000;
+        
+        // Reduce array size for Kubernetes environment
+        const numElements = param ? parseInt(param) : 100000;
         console.log(`Allocating an array with ${numElements} elements`);
-
+      
         try {
-          const largeArray = new Array(numElements);
-          for (let i = 0; i < numElements; i++) {
-            largeArray[i] = Math.random();
+          let total = 0;
+          const chunkSize = 1000;
+          
+          for (let chunk = 0; chunk < numElements/chunkSize; chunk++) {
+            const smallArray = new Array(chunkSize);
+            for (let i = 0; i < chunkSize; i++) {
+              smallArray[i] = Math.random();
+            }
+            total += smallArray.reduce((acc, val) => acc + val, 0);
           }
-          largeArray.sort((a, b) => a - b);
-          const total = largeArray.reduce((acc, val) => acc + val, 0);
+          
           return new Response(`Memory intensive operation completed. Sum: ${total}`, {
             headers: { "Content-Type": "text/plain" },
           });
         } catch (error: unknown) {
-          return new Response(`Error during memory-intensive operation: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+          return new Response(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`, {
             status: 500,
             headers: { "Content-Type": "text/plain" },
           });

@@ -152,38 +152,35 @@ const server = http.createServer((req, res) => {
       }
       break;
     }
-    case endpoints.MEMORY_INTENSIVE: {
-      // Memory-intensive endpoint
-      console.log("memory intensive endpoint called");
-      if (isNaN(Number(secondParam))) {
-        res.writeHead(400, { "Content-Type": "text/plain" });
-        res.end("400 Bad Request\n");
-        return;
-      }
-      // Use the query parameter as a multiplier for the workload.
-      // For example, a multiplier of 1 creates an array with 10 million numbers.
-      const multiplier = Number(secondParam);
-      const numElements = multiplier * 1_000_000;
-      console.log(`Allocating an array with ${numElements} elements`);
 
+    case endpoints.MEMORY_INTENSIVE: {
+      console.log("memory intensive endpoint called");
+      
+      // Reduce array size for Kubernetes environment
+      const numElements = secondParam ? parseInt(secondParam) : 100000;
+      console.log(`Allocating an array with ${numElements} elements`);
+    
       try {
-        // Allocate a large array and fill it with random numbers.
-        const largeArray = new Array(numElements);
-        for (let i = 0; i < numElements; i++) {
-          largeArray[i] = Math.random();
+      let total = 0;
+      const chunkSize = 1000;
+      
+      for (let chunk = 0; chunk < numElements/chunkSize; chunk++) {
+        const smallArray = new Array(chunkSize);
+        for (let i = 0; i < chunkSize; i++) {
+        smallArray[i] = Math.random();
         }
-        // Perform a heavy operation: sorting the array.
-        largeArray.sort((a, b) => a - b);
-        // Further process: compute the sum of all elements.
-        const total = largeArray.reduce((acc, val) => acc + val, 0);
-        res.writeHead(200, { "Content-Type": "text/plain" });
-        res.end(`Memory intensive operation completed. Sum: ${total}`);
+        total += smallArray.reduce((acc, val) => acc + val, 0);
+      }
+      
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end(`Memory intensive operation completed. Sum: ${total}`);
       } catch (error) {
-        res.writeHead(500, { "Content-Type": "text/plain" });
-        res.end(`Error during memory-intensive operation: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      res.writeHead(500, { "Content-Type": "text/plain" });
+      res.end(`Error during memory-intensive operation: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
       break;
     }
+
     case endpoints.JSON_PROCESSING: {
       console.log("json-processing endpoint called");
       // Use the second URL parameter as a multiplier for workload size (default to 1)
