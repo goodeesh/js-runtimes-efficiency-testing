@@ -111,6 +111,52 @@ EOF
     echo "$PORT" > .selected_port
 }
 
+get_direct_url() {
+    # Check if a specific runtime was selected
+    if [[ -f .selected_runtime ]]; then
+        RUNTIME=$(cat .selected_runtime)
+    else
+        echo "No runtime selected. Please run 'create' command first."
+        echo "Or specify which runtime to check:"
+        echo "1) Node.js"
+        echo "2) Bun"
+        echo "3) Deno"
+        read -p "Enter your choice (1-3): " runtime_choice
+        
+        case "$runtime_choice" in
+            1) RUNTIME="node" ;;
+            2) RUNTIME="bun" ;;
+            3) RUNTIME="deno" ;;
+            *) 
+                echo "Invalid choice. Please select 1, 2, or 3."
+                exit 1
+                ;;
+        esac
+    fi
+    
+    # Get Minikube IP
+    MINIKUBE_IP=$(minikube ip)
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to get Minikube IP. Is Minikube running?"
+        exit 1
+    fi
+    
+    # Get the NodePort for the service
+    SERVICE="${RUNTIME}-app-service"
+    NODE_PORT=$(kubectl get svc $SERVICE -o jsonpath='{.spec.ports[0].nodePort}')
+    if [ $? -ne 0 ] || [ -z "$NODE_PORT" ]; then
+        echo "Error: Failed to get NodePort for $SERVICE. Is the service deployed?"
+        exit 1
+    fi
+    
+    # Print the direct URL
+    echo "Direct access URL for $RUNTIME:"
+    echo "http://$MINIKUBE_IP:$NODE_PORT"
+    echo ""
+    echo "For benchmarking, use:"
+    echo "./bombardier -c \$concurrency -n \$REQUESTS \"http://$MINIKUBE_IP:$NODE_PORT/json-small\""
+}
+
 # Add this function to orbstack-cluster-manager.sh
 setup_monitoring() {
     echo "Setting up Prometheus and Grafana for monitoring..."
@@ -346,6 +392,9 @@ case "$1" in
         ;;
     setup-monitoring)
         setup_monitoring
+        ;;
+    get-url)
+        get_direct_url
         ;;
     *)
         echo "Usage: $0 {create|delete|verify|forward|setup-monitoring}"

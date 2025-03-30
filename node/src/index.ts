@@ -15,7 +15,7 @@ enum endpoints {
   INSERT_USER = "insertUser",
   DELETE_USER = "deleteUser",
   GET_USER = "getUser",
-  UPDATE_USER = "updateUser"
+  UPDATE_USER = "updateUser",
 }
 
 function fibonacci(n: number): number {
@@ -33,16 +33,16 @@ const server = http.createServer((req, res) => {
     return;
   }
   const url = new URL(req.url, `http://${req.headers.host}`);
-  
-  // Health check endpoint
-  if (url.pathname === '/health') {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('OK');
+
+  if (url.pathname === "/health") {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("OK");
     return;
   }
 
-  const firstParam = url.pathname.split('/')[1];
-  const secondParam = url.pathname.split('/')[2];
+  const firstParam = url.pathname.split("/")[1];
+  const secondParam = url.pathname.split("/")[2];
+
   switch (firstParam) {
     case endpoints.JSON_SMALL: {
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -50,8 +50,6 @@ const server = http.createServer((req, res) => {
       break;
     }
     case endpoints.FIBONACCI_BLOCKER: {
-      // CPU-intensive task on the main thread (blocking)
-      console.log("fibonacci endpoint called");
       if (isNaN(Number(secondParam))) {
         res.writeHead(400, { "Content-Type": "text/plain" });
         res.end("400 Bad Request\n");
@@ -62,8 +60,6 @@ const server = http.createServer((req, res) => {
       break;
     }
     case endpoints.FIBONACCI_NON_BLOCKING: {
-      // CPU-intensive task offloaded to a worker thread
-      console.log("fibonacci non-blocking endpoint called");
       const worker = new Worker(path.join(__dirname, "fibonacci.worker.js"));
       if (isNaN(Number(secondParam))) {
         res.writeHead(400, { "Content-Type": "text/plain" });
@@ -72,7 +68,6 @@ const server = http.createServer((req, res) => {
       }
       worker.on("message", resolve);
       worker.postMessage(secondParam);
-      // deno-lint-ignore no-inner-declarations
       function resolve(result: number) {
         worker.terminate();
         res.writeHead(200, { "Content-Type": "text/plain" });
@@ -80,49 +75,9 @@ const server = http.createServer((req, res) => {
       }
       break;
     }
-    case endpoints.FIBONACCI_PARALLEL: {
-      // Using multiple worker threads for parallel computation
-      console.log("fibonacci parallel endpoint called");
-      if (isNaN(Number(secondParam))) {
-        res.writeHead(400, { "Content-Type": "text/plain" });
-        res.end("400 Bad Request\n");
-        return;
-      }
-      const worker1 = new Worker(path.join(__dirname, "fibonacci.worker.js"));
-      const worker2 = new Worker(path.join(__dirname, "fibonacci.worker.js"));
-      const worker3 = new Worker(path.join(__dirname, "fibonacci.worker.js"));
-      const worker4 = new Worker(path.join(__dirname, "fibonacci.worker.js"));
 
-      Promise.all([
-        new Promise((resolve) => {
-          worker1.on("message", resolve);
-          worker1.postMessage(secondParam);
-        }),
-        new Promise((resolve) => {
-          worker2.on("message", resolve);
-          worker2.postMessage(Number(secondParam) - 1);
-        }),
-        new Promise((resolve) => {
-          worker3.on("message", resolve);
-          worker3.postMessage(Number(secondParam) - 2);
-        }),
-        new Promise((resolve) => {
-          worker4.on("message", resolve);
-          worker4.postMessage(Number(secondParam) - 3);
-        }),
-      ]).then((values) => {
-        worker1.terminate();
-        worker2.terminate();
-        worker3.terminate();
-        worker4.terminate();
-        res.writeHead(200, { "Content-Type": "text/plain" });
-        res.end(JSON.stringify(values));
-      });
-      break;
-    }
     case endpoints.VIDEO_SERVING: {
       // I/O-intensive task for serving video content
-      console.log("video serving endpoint called");
       const __dirname = path.resolve();
       const filePath = path.join(__dirname, "./resources/video.mp4");
       const stat = fs.statSync(filePath);
@@ -154,60 +109,50 @@ const server = http.createServer((req, res) => {
     }
 
     case endpoints.MEMORY_INTENSIVE: {
-      console.log("memory intensive endpoint called");
-      
-      // Reduce array size for Kubernetes environment
-      const numElements = secondParam ? parseInt(secondParam) : 100000;
-      console.log(`Allocating an array with ${numElements} elements`);
-    
+      const numElements = 100000;
+
       try {
-      let total = 0;
-      const chunkSize = 1000;
-      
-      for (let chunk = 0; chunk < numElements/chunkSize; chunk++) {
-        const smallArray = new Array(chunkSize);
-        for (let i = 0; i < chunkSize; i++) {
-        smallArray[i] = Math.random();
+        let total = 0;
+        const chunkSize = 1000;
+
+        for (let chunk = 0; chunk < numElements / chunkSize; chunk++) {
+          const smallArray = new Array(chunkSize);
+          for (let i = 0; i < chunkSize; i++) {
+            smallArray[i] = Math.random();
+          }
+          total += smallArray.reduce((acc, val) => acc + val, 0);
         }
-        total += smallArray.reduce((acc, val) => acc + val, 0);
-      }
-      
-      res.writeHead(200, { "Content-Type": "text/plain" });
-      res.end(`Memory intensive operation completed. Sum: ${total}`);
+
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        res.end(`Memory intensive operation completed. Sum: ${total}`);
       } catch (error) {
-      res.writeHead(500, { "Content-Type": "text/plain" });
-      res.end(`Error during memory-intensive operation: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        res.writeHead(500, { "Content-Type": "text/plain" });
+        res.end(
+          `Error during memory-intensive operation: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
       }
       break;
     }
 
     case endpoints.JSON_PROCESSING: {
-      console.log("json-processing endpoint called");
-      // Use the second URL parameter as a multiplier for workload size (default to 1)
       const jsonMultiplier = Number(secondParam) || 1;
-      // For example, generate 100,000 objects per multiplier unit
       const numberOfElements = jsonMultiplier * 100000;
-      console.log(`Generating an array with ${numberOfElements} elements`);
-
-      // Generate a large array of objects
       const largeArray = [];
       for (let i = 0; i < numberOfElements; i++) {
         largeArray.push({ id: i, value: Math.random() });
       }
-
-      // Serialize the array into a JSON string
       const jsonString = JSON.stringify(largeArray);
 
-      // Parse the JSON string back into a JavaScript object
       const parsedData = JSON.parse(jsonString);
 
-      // Return the entire parsed JSON as the response
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(parsedData));
       break;
     }
+
     case endpoints.INSERT_USER: {
-      console.log("insertUser endpoint called");
       const body: Uint8Array[] = [];
       req.on("data", (chunk) => {
         body.push(chunk);
@@ -220,22 +165,22 @@ const server = http.createServer((req, res) => {
           res.end("400 Bad Request\n");
           return;
         }
-        database.insertUser(username, password, email, name, surname, age).then(() => {
-          console.log("User inserted successfully");
-          res.writeHead(200, { "Content-Type": "text/plain" });
-          res.end("User inserted successfully\n");
-        })
-        .catch((error) => {
-          console.error("Error inserting user:", error);
-          res.writeHead(500, { "Content-Type": "text/plain" });
-          res.end("500 Internal Server Error\n");
-          return;
-        });
+        database
+          .insertUser(username, password, email, name, surname, age)
+          .then(() => {
+            res.writeHead(200, { "Content-Type": "text/plain" });
+            res.end("User inserted successfully\n");
+          })
+          .catch((error) => {
+            console.error("Error inserting user:", error);
+            res.writeHead(500, { "Content-Type": "text/plain" });
+            res.end("500 Internal Server Error\n");
+            return;
+          });
       });
       break;
     }
     case endpoints.DELETE_USER: {
-      console.log("deleteUser endpoint called");
       const body: Uint8Array[] = [];
       req.on("data", (chunk) => {
         body.push(chunk);
@@ -248,22 +193,22 @@ const server = http.createServer((req, res) => {
           res.end("400 Bad Request\n");
           return;
         }
-        database.deleteUser(username).then(() => {
-          console.log("User deleted successfully");
-          res.writeHead(200, { "Content-Type": "text/plain" });
-          res.end("User deleted successfully\n");
-        })
-        .catch((error) => {
-          console.error("Error deleting user:", error);
-          res.writeHead(500, { "Content-Type": "text/plain" });
-          res.end("500 Internal Server Error\n");
-          return;
-        });
+        database
+          .deleteUser(username)
+          .then(() => {
+            res.writeHead(200, { "Content-Type": "text/plain" });
+            res.end("User deleted successfully\n");
+          })
+          .catch((error) => {
+            console.error("Error deleting user:", error);
+            res.writeHead(500, { "Content-Type": "text/plain" });
+            res.end("500 Internal Server Error\n");
+            return;
+          });
       });
       break;
     }
     case endpoints.GET_USER: {
-      console.log("getUser endpoint called");
       const body: Uint8Array[] = [];
       req.on("data", (chunk) => {
         body.push(chunk);
@@ -276,22 +221,22 @@ const server = http.createServer((req, res) => {
           res.end("400 Bad Request\n");
           return;
         }
-        database.getUser(username).then((user) => {
-          console.log("User retrieved successfully");
-          res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify(user));
-        })
-        .catch((error) => {
-          console.error("Error retrieving user:", error);
-          res.writeHead(500, { "Content-Type": "text/plain" });
-          res.end("500 Internal Server Error\n");
-          return;
-        });
+        database
+          .getUser(username)
+          .then((user) => {
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify(user));
+          })
+          .catch((error) => {
+            console.error("Error retrieving user:", error);
+            res.writeHead(500, { "Content-Type": "text/plain" });
+            res.end("500 Internal Server Error\n");
+            return;
+          });
       });
       break;
     }
     case endpoints.UPDATE_USER: {
-      console.log("updateUser endpoint called");
       const body: Uint8Array[] = [];
       req.on("data", (chunk) => {
         body.push(chunk);
@@ -304,29 +249,31 @@ const server = http.createServer((req, res) => {
           res.end("400 Bad Request\n");
           return;
         }
-        database.updateUser(username, password).then(() => {
-          console.log("User updated successfully");
-          res.writeHead(200, { "Content-Type": "text/plain" });
-          res.end("User updated successfully\n");
-        })
-        .catch((error) => {
-          console.error("Error updating user:", error);
-          res.writeHead(500, { "Content-Type": "text/plain" });
-          res.end("500 Internal Server Error\n");
-          return;
-        });
+        database
+          .updateUser(username, password)
+          .then(() => {
+            res.writeHead(200, { "Content-Type": "text/plain" });
+            res.end("User updated successfully\n");
+          })
+          .catch((error) => {
+            console.error("Error updating user:", error);
+            res.writeHead(500, { "Content-Type": "text/plain" });
+            res.end("500 Internal Server Error\n");
+            return;
+          });
       });
       break;
     }
-    
 
     default: {
       res.writeHead(404, { "Content-Type": "text/plain" });
       const endpointsList = Object.values(endpoints)
-        .map(endpoint => `- /${endpoint}`)
+        .map((endpoint) => `- /${endpoint}`)
         .join("\n");
-      
-      res.end(`404 Not Found\n\nThe available endpoints are:\n${endpointsList}\n- /health (server health check)`);
+
+      res.end(
+        `404 Not Found\n\nThe available endpoints are:\n${endpointsList}\n- /health (server health check)`
+      );
       break;
     }
   }

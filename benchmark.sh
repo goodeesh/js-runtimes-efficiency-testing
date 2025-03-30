@@ -2,14 +2,6 @@
 # Benchmark orchestration script
 set -e
 
-# Check if bombardier is installed
-if ! command -v bombardier &> /dev/null; then
-    echo "Bombardier is not installed. Please install it first."
-    echo "You can install it using: brew install bombardier"
-    echo "Or download from: https://github.com/codesenberg/bombardier/releases"
-    exit 1
-fi
-
 # Get runtime selection from user
 echo "Select a runtime to benchmark:"
 echo "1) Node.js"
@@ -20,15 +12,12 @@ read -p "Enter your choice (1-3): " runtime_choice
 case "$runtime_choice" in
     1)
         RUNTIME="node"
-        PORT="3000"
         ;;
     2)
         RUNTIME="bun"
-        PORT="5000"
         ;;
     3)
         RUNTIME="deno"
-        PORT="8000"
         ;;
     *)
         echo "Invalid choice. Please select 1, 2, or 3."
@@ -36,54 +25,97 @@ case "$runtime_choice" in
         ;;
 esac
 
-echo "Running benchmarks for $RUNTIME on port $PORT..."
+# Get the Minikube IP and NodePort for direct access
+MINIKUBE_IP=$(minikube ip)
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to get Minikube IP. Is Minikube running?"
+    exit 1
+fi
+
+# Get the NodePort for the service
+SERVICE="${RUNTIME}-app-service"
+NODE_PORT=$(kubectl get svc $SERVICE -o jsonpath='{.spec.ports[0].nodePort}')
+if [ $? -ne 0 ] || [ -z "$NODE_PORT" ]; then
+    echo "Error: Failed to get NodePort for $SERVICE. Is the service deployed?"
+    exit 1
+fi
+
+BASE_URL="http://$MINIKUBE_IP:$NODE_PORT"
+echo "Running benchmarks for $RUNTIME using direct Kubernetes URL: $BASE_URL"
 
 # Results directory
-RESULTS_DIR="benchmark_results/${RUNTIME}"
+RESULTS_DIR="benchmark_results/${RUNTIME}_kubernetes"
 mkdir -p "$RESULTS_DIR"
-
-# Test parameters
-CONCURRENCY_LEVELS=(1000)
-REQUESTS=1000000
 
 # Utility function for running benchmarks
 run_benchmark() {
   local endpoint=$1
   local concurrency=$2
+  local requests=$3
 
-  echo "Testing $RUNTIME - $endpoint (c=$concurrency)"
+  echo "Testing $RUNTIME - $endpoint (c=$concurrency, n=$requests)"
 
   local sanitized_endpoint=${endpoint//\//_} # Replace '/' with '_'
-  local url="http://localhost:$PORT/$endpoint"
+  local url="${BASE_URL}/$endpoint"
   local output_file="$RESULTS_DIR/${sanitized_endpoint}_c${concurrency}.txt"
 
-  bombardier -c $concurrency -n $REQUESTS "$url" > "$output_file"
+  ./bombardier -c $concurrency -n $requests "$url" > "$output_file"
   
   local rps=$(grep "Reqs/sec" "$output_file" | awk '{print $2}')
   local mean_latency=$(grep "Latency" "$output_file" | awk '{print $2}')
+  local throughput=$(grep "Throughput:" "$output_file" | awk '{print $2}')
+  
+  # Extract HTTP status code counts
+  local status_line=$(grep "HTTP codes:" -A 1 "$output_file" | tail -n 1)
+  local success_count=$(echo "$status_line" | grep -oP "2xx - \K[0-9]+" || echo "0")
+  local client_error_count=$(echo "$status_line" | grep -oP "4xx - \K[0-9]+" || echo "0")
+  local server_error_count=$(echo "$status_line" | grep -oP "5xx - \K[0-9]+" || echo "0")
+  local other_count=$(echo "$status_line" | grep -oP "others - \K[0-9]+" || echo "0")
+  
+  # Calculate error rate as percentage
+  local total_requests=$((success_count + client_error_count + server_error_count + other_count))
+  local error_rate=0
+  if [ "$total_requests" -gt 0 ]; then
+    error_rate=$(echo "scale=2; 100 * ($client_error_count + $server_error_count + $other_count) / $total_requests" | bc)
+  fi
 
-  echo "$RUNTIME,$endpoint,$concurrency,$rps,$mean_latency" >> "$RESULTS_DIR/summary.csv"
+  echo "$RUNTIME,$endpoint,$concurrency,$requests,$rps,$mean_latency,$throughput,$error_rate" >> "$RESULTS_DIR/summary.csv"
 }
 
 # Initialize results file
-echo "Runtime,Endpoint,Concurrency,RequestsPerSecond,MeanLatency" > "$RESULTS_DIR/summary.csv"
-
-# Function to run benchmarks for a specific endpoint
-benchmark_endpoint() {
-  local endpoint=$1
-
-  for concurrency in "${CONCURRENCY_LEVELS[@]}"; do
-    run_benchmark "$endpoint" "$concurrency"
-  done
-}
+echo "Runtime,Endpoint,Concurrency,Requests,RequestsPerSecond,MeanLatency,Throughput,ErrorRate" > "$RESULTS_DIR/summary.csv"
 
 echo "Starting benchmarks for $RUNTIME runtime..."
-benchmark_endpoint "json-small"
-benchmark_endpoint "fibonacci-blocker/20"
-benchmark_endpoint "fibonacci-non-blocking/20"
-benchmark_endpoint "fibonacci-parallel/20"
-benchmark_endpoint "video-serving"
-benchmark_endpoint "memory-intensive/1"
-benchmark_endpoint "json-processing"
+
+# json-small: 100,000 requests with concurrency of 10, 100, and 1000
+echo "Testing json-small endpoint..."
+run_benchmark "json-small" 10 100000
+run_benchmark "json-small" 100 100000
+run_benchmark "json-small" 1000 100000
+
+# fibonacci-blocker/30: 10,000 requests with concurrency of 10 and 100
+echo "Testing fibonacci-blocker endpoint..."
+run_benchmark "fibonacci-blocker/30" 10 10000
+run_benchmark "fibonacci-blocker/30" 100 10000
+
+# fibonacci-non-blocking/30: 10,000 requests with concurrency of 10 and 100
+echo "Testing fibonacci-non-blocking endpoint..."
+run_benchmark "fibonacci-non-blocking/30" 10 10000
+run_benchmark "fibonacci-non-blocking/30" 100 10000
+
+# video-serving: 10,000 requests with concurrency of 10 and 100
+echo "Testing video-serving endpoint..."
+run_benchmark "video-serving" 10 10000
+run_benchmark "video-serving" 100 10000
+
+# memory-intensive/1: 100,000 requests with concurrency of 10 and 100
+echo "Testing memory-intensive endpoint..."
+run_benchmark "memory-intensive/1" 10 100000
+run_benchmark "memory-intensive/1" 100 100000
+
+# json-processing: 100,000 requests with concurrency of 10 and 100
+echo "Testing json-processing endpoint..."
+run_benchmark "json-processing" 10 10000
+run_benchmark "json-processing" 100 10000
 
 echo "Benchmarking complete for $RUNTIME! Results saved to $RESULTS_DIR"
