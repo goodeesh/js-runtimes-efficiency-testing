@@ -72,11 +72,15 @@ run_benchmark() {
   local server_error_count=$(echo "$status_line" | grep -oP "5xx - \K[0-9]+" || echo "0")
   local other_count=$(echo "$status_line" | grep -oP "others - \K[0-9]+" || echo "0")
   
-  # Calculate error rate as percentage
-  local total_requests=$((success_count + client_error_count + server_error_count + other_count))
+  # Also extract connection errors and other failures
+  local connection_errors=$(grep -A 1 "Errors:" "$output_file" | tail -n 1 | grep -oP "[0-9]+$" || echo "0")
+  
+  # Calculate error rate as percentage - include ALL errors
+  local total_requests=$requests  # Use the requested number as total
   local error_rate=0
   if [ "$total_requests" -gt 0 ]; then
-    error_rate=$(echo "scale=2; 100 * ($client_error_count + $server_error_count + $other_count) / $total_requests" | bc)
+    local total_errors=$((client_error_count + server_error_count + other_count + connection_errors))
+    error_rate=$(echo "scale=2; 100 * $total_errors / $total_requests" | bc)
   fi
 
   echo "$RUNTIME,$endpoint,$concurrency,$requests,$rps,$mean_latency,$throughput,$error_rate" >> "$RESULTS_DIR/summary.csv"
@@ -91,25 +95,21 @@ echo "Starting benchmarks for $RUNTIME runtime..."
 echo "Testing json-small endpoint..."
 run_benchmark "json-small" 10 100000
 run_benchmark "json-small" 100 100000
-run_benchmark "json-small" 1000 100000
 
 # fibonacci-blocker/30: 10,000 requests with concurrency of 10 and 100
 echo "Testing fibonacci-blocker endpoint..."
 run_benchmark "fibonacci-blocker/30" 10 10000
 run_benchmark "fibonacci-blocker/30" 100 10000
 
-# fibonacci-non-blocking/30: 10,000 requests with concurrency of 10 and 100
-echo "Testing fibonacci-non-blocking endpoint..."
-run_benchmark "fibonacci-non-blocking/30" 10 10000
-run_benchmark "fibonacci-non-blocking/30" 100 10000
+
 
 # video-serving: 10,000 requests with concurrency of 10 and 100
 echo "Testing video-serving endpoint..."
 run_benchmark "video-serving" 10 10000
 run_benchmark "video-serving" 100 10000
 
+
 # memory-intensive/1: 100,000 requests with concurrency of 10 and 100
-echo "Testing memory-intensive endpoint..."
 run_benchmark "memory-intensive/1" 10 100000
 run_benchmark "memory-intensive/1" 100 100000
 

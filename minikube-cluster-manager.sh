@@ -285,15 +285,46 @@ delete_resources() {
 
 clean_apps() {
     echo "Cleaning application resources..."
+    
+    # Force delete all app resources regardless of whether we detect them or not
+    echo "Removing all runtime deployments and related resources..."
+    
+    # First delete by specific runtime label if we know which one
     if [[ -f .selected_runtime ]]; then
         RUNTIME=$(cat .selected_runtime)
-        echo "Removing $RUNTIME resources..."
-        kubectl delete -k temp_k8s/ 2>/dev/null || true
-        rm .selected_runtime .selected_port 2>/dev/null || true
-    else
-        echo "Removing all application resources..."
-        kubectl delete -k k8s/ 2>/dev/null || true
+        echo "Targeting $RUNTIME resources specifically..."
+        
+        # Delete by label with force option
+        kubectl delete deployment,service,hpa,pod -l app=${RUNTIME}-app --grace-period=0 --force --timeout=30s 2>/dev/null || true
     fi
+    
+    # Then try more general approach for anything that might be left
+    echo "Cleaning up any remaining resources..."
+    
+    # Delete all deployment, service, hpa for any runtime
+    kubectl delete deployment,service,hpa,pod -l "app in (node-app,bun-app,deno-app)" --grace-period=0 --force --timeout=30s 2>/dev/null || true
+    
+    # Also delete from k8s directory as fallback
+    kubectl delete -k k8s/ --grace-period=0 --force --timeout=30s 2>/dev/null || true
+    
+    # Delete metrics server and related resources
+    echo "Cleaning up metrics server resources..."
+    kubectl delete -f k8s/common/metrics.yaml --grace-period=0 --force --timeout=30s 2>/dev/null || true
+    
+    # Wait briefly to allow resources to be terminated
+    echo "Waiting for resources to be fully terminated..."
+    sleep 5
+    
+    # Verify no app pods remain
+    if kubectl get pods -l "app in (node-app,bun-app,deno-app)" 2>/dev/null | grep -q "Running"; then
+        echo "WARNING: Some pods still exist. Forcing deletion..."
+        kubectl delete pods -l "app in (node-app,bun-app,deno-app)" --grace-period=0 --force --timeout=10s 2>/dev/null || true
+    else
+        echo "All application pods have been removed."
+    fi
+    
+    # Clean up the runtime selection files
+    rm -f .selected_runtime .selected_port 2>/dev/null || true
     echo "Application resources deleted."
 }
 

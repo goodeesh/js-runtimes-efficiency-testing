@@ -1,0 +1,11 @@
+Runtime,Endpoint,Concurrency,Requests,RequestsPerSecond,MeanLatency,Throughput,ErrorRate
+bun,json-small,10,100000,17965.37,555.45us,3.57MB/s,0
+bun,json-small,100,100000,19054.24,5.22ms,3.82MB/s,0
+bun,fibonacci-blocker/30,10,10000,110.69,90.39ms,20.95KB/s,0
+bun,fibonacci-blocker/30,100,10000,331.24,299.72ms,62.68KB/s,0
+bun,video-serving,10,10000,171.70,58.93ms,4.22GB/s,0
+bun,video-serving,100,10000,238.99,423.24ms,5.85GB/s,0
+bun,memory-intensive/1,10,100000,2782.19,3.59ms,669.13KB/s,0
+bun,memory-intensive/1,100,100000,3862.69,25.86ms,0.91MB/s,0
+bun,json-processing,10,10000,2747.51,3.59ms,100.91MB/s,0
+bun,json-processing,100,10000,4101.52,23.80ms,150.51MB/s,0

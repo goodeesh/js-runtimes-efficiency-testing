@@ -19,7 +19,7 @@ enum endpoints {
   INSERT_USER = "insertUser",
   DELETE_USER = "deleteUser",
   GET_USER = "getUser",
-  UPDATE_USER = "updateUser"
+  UPDATE_USER = "updateUser",
 }
 
 // Define URL patterns
@@ -31,22 +31,14 @@ export default {
     const url = new URL(req.url);
 
     // Health check endpoint
-    if (url.pathname === '/health') {
-      return new Response('OK', { status: 200 });
+    if (url.pathname === "/health") {
+      return new Response("OK", { status: 200 });
     }
 
     const match = apiPattern.exec(url);
-    const endpointsList = Object.values(endpoints)
-          .map(endpoint => `- /${endpoint}`)
-          .join("\n");
-        
-    const failResponse = new Response(`404 Not Found\n\nThe available endpoints are:\n${endpointsList}\n- /health (server health check)`, {
-        status: 404,
-        headers: { "Content-Type": "text/plain" }
-    });
 
     if (!match) {
-      return failResponse
+      return new Response("400 Bad Request\n", { status: 400 });
     }
 
     const { endpoint, param } = match.pathname.groups;
@@ -59,29 +51,31 @@ export default {
       }
 
       case endpoints.FIBONACCI_BLOCKER: {
-        console.log("fibonacci endpoint called");
         if (isNaN(Number(param))) {
           return new Response("400 Bad Request\n", {
             status: 400,
             headers: { "Content-Type": "text/plain" },
           });
         }
-        return new Response(fibonacci(Number(param)).toString(), {
+        const result = fibonacci(Number(param));
+        return new Response(result.toString(), {
           headers: { "Content-Type": "text/plain" },
         });
       }
 
       case endpoints.FIBONACCI_NON_BLOCKING: {
-        console.log("fibonacci non-blocking endpoint called");
         if (isNaN(Number(param))) {
           return new Response("400 Bad Request\n", {
             status: 400,
             headers: { "Content-Type": "text/plain" },
           });
         }
-        const worker = new Worker(new URL("./fibonacci.worker.ts", import.meta.url).href, {
-          type: "module",
-        });
+        const worker = new Worker(
+          new URL("./fibonacci.worker.ts", import.meta.url).href,
+          {
+            type: "module",
+          }
+        );
         const result = await new Promise<number>((resolve) => {
           worker.onmessage = (e) => resolve(e.data);
           worker.postMessage(Number(param));
@@ -93,7 +87,6 @@ export default {
       }
 
       case endpoints.FIBONACCI_PARALLEL: {
-        console.log("fibonacci parallel endpoint called");
         if (isNaN(Number(param))) {
           return new Response("400 Bad Request\n", {
             status: 400,
@@ -101,18 +94,21 @@ export default {
           });
         }
 
-        const workers = Array.from({ length: 4 }, () =>
-          new Worker(new URL("./fibonacci.worker.ts", import.meta.url).href, {
-            type: "module",
-          })
+        const workers = Array.from(
+          { length: 4 },
+          () =>
+            new Worker(new URL("./fibonacci.worker.ts", import.meta.url).href, {
+              type: "module",
+            })
         );
 
         const values = await Promise.all(
-          workers.map((worker, index) =>
-            new Promise((resolve) => {
-              worker.onmessage = (e) => resolve(e.data);
-              worker.postMessage(Number(param) - index);
-            })
+          workers.map(
+            (worker, index) =>
+              new Promise((resolve) => {
+                worker.onmessage = (e) => resolve(e.data);
+                worker.postMessage(Number(param) - index);
+              })
           )
         );
 
@@ -123,7 +119,6 @@ export default {
       }
 
       case endpoints.VIDEO_SERVING: {
-        console.log("video serving endpoint called");
         const filePath = new URL("./resources/video.mp4", import.meta.url);
         const file = await Deno.open(filePath);
         const fileInfo = await file.stat();
@@ -153,40 +148,43 @@ export default {
       }
 
       case endpoints.MEMORY_INTENSIVE: {
-        console.log("memory intensive endpoint called");
-        
         // Reduce array size for Kubernetes environment
-        const numElements = param ? parseInt(param) : 100000;
-        console.log(`Allocating an array with ${numElements} elements`);
-      
+        const numElements = 100000;
+
         try {
           let total = 0;
           const chunkSize = 1000;
-          
-          for (let chunk = 0; chunk < numElements/chunkSize; chunk++) {
+
+          for (let chunk = 0; chunk < numElements / chunkSize; chunk++) {
             const smallArray = new Array(chunkSize);
             for (let i = 0; i < chunkSize; i++) {
               smallArray[i] = Math.random();
             }
             total += smallArray.reduce((acc, val) => acc + val, 0);
           }
-          
-          return new Response(`Memory intensive operation completed. Sum: ${total}`, {
-            headers: { "Content-Type": "text/plain" },
-          });
+
+          return new Response(
+            `Memory intensive operation completed. Sum: ${total}`,
+            {
+              headers: { "Content-Type": "text/plain" },
+            }
+          );
         } catch (error: unknown) {
-          return new Response(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`, {
-            status: 500,
-            headers: { "Content-Type": "text/plain" },
-          });
+          return new Response(
+            `Error: ${
+              error instanceof Error ? error.message : "Unknown error"
+            }`,
+            {
+              status: 500,
+              headers: { "Content-Type": "text/plain" },
+            }
+          );
         }
       }
 
       case endpoints.JSON_PROCESSING: {
-        console.log("json-processing endpoint called");
         const jsonMultiplier = Number(param) || 1;
-        const numberOfElements = jsonMultiplier * 100000;
-        console.log(`Generating an array with ${numberOfElements} elements`);
+        const numberOfElements = jsonMultiplier * 1000;
 
         const largeArray = Array.from({ length: numberOfElements }, (_, i) => ({
           id: i,
@@ -202,21 +200,26 @@ export default {
       }
 
       case endpoints.INSERT_USER: {
-        console.log("insertUser endpoint called");
         try {
           const body = await req.json();
           const { username, password, email, name, surname, age } = body;
-          
+
           if (!username || !password || !email || !name || !surname || !age) {
             return new Response("400 Bad Request\n", {
               status: 400,
               headers: { "Content-Type": "text/plain" },
             });
           }
-          
-          await database.insertUser(username, password, email, name, surname, age);
-          console.log("User inserted successfully");
-          
+
+          await database.insertUser(
+            username,
+            password,
+            email,
+            name,
+            surname,
+            age
+          );
+
           return new Response("User inserted successfully\n", {
             headers: { "Content-Type": "text/plain" },
           });
@@ -230,21 +233,19 @@ export default {
       }
 
       case endpoints.GET_USER: {
-        console.log("getUser endpoint called");
         try {
           const body = await req.json();
           const { username } = body;
-          
+
           if (!username) {
             return new Response("400 Bad Request\n", {
               status: 400,
               headers: { "Content-Type": "text/plain" },
             });
           }
-          
+
           const user = database.getUser(username);
-          console.log("User retrieved successfully");
-          
+
           return new Response(JSON.stringify(user), {
             headers: { "Content-Type": "application/json" },
           });
@@ -258,21 +259,19 @@ export default {
       }
 
       case endpoints.UPDATE_USER: {
-        console.log("updateUser endpoint called");
         try {
           const body = await req.json();
           const { username, password } = body;
-          
+
           if (!username || !password) {
             return new Response("400 Bad Request\n", {
               status: 400,
               headers: { "Content-Type": "text/plain" },
             });
           }
-          
+
           await database.updateUser(username, password);
-          console.log("User updated successfully");
-          
+
           return new Response("User updated successfully\n", {
             headers: { "Content-Type": "text/plain" },
           });
@@ -286,21 +285,19 @@ export default {
       }
 
       case endpoints.DELETE_USER: {
-        console.log("deleteUser endpoint called");
         try {
           const body = await req.json();
           const { username } = body;
-          
+
           if (!username) {
             return new Response("400 Bad Request\n", {
               status: 400,
               headers: { "Content-Type": "text/plain" },
             });
           }
-          
+
           database.deleteUser(username);
-          console.log("User deleted successfully");
-          
+
           return new Response("User deleted successfully\n", {
             headers: { "Content-Type": "text/plain" },
           });
@@ -314,7 +311,17 @@ export default {
       }
 
       default: {
-        return failResponse
+        const endpointsList = Object.values(endpoints)
+          .map((endpoint) => `- /${endpoint}`)
+          .join("\n");
+
+        return new Response(
+          `404 Not Found\n\nThe available endpoints are:\n${endpointsList}\n- /health (server health check)`,
+          {
+            status: 404,
+            headers: { "Content-Type": "text/plain" },
+          }
+        );
       }
     }
   },

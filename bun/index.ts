@@ -162,7 +162,7 @@ const server = serve({
 
       case endpoints.JSON_PROCESSING: {
         const jsonMultiplier = Number(secondParam) || 1;
-        const numberOfElements = jsonMultiplier * 100000;
+        const numberOfElements = jsonMultiplier * 1000;
         const largeArray = [];
         for (let i = 0; i < numberOfElements; i++) {
           largeArray.push({ id: i, value: Math.random() });

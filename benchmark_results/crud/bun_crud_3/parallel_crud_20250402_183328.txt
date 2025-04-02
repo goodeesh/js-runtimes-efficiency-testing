@@ -1,0 +1,11 @@
+CRUD Performance Test Results - bun - Wed Apr  2 06:33:28 PM CEST 2025
+Server: http://192.168.49.2:31000
+Users: 2000
+Concurrency: 100
+
+Operation  | Success Rate | Operations/sec
+-----------|--------------|--------------
+CREATE     | 2000/2000 | 236
+READ       | 2000/2000 | 261
+UPDATE     | 2000/2000 | 244
+DELETE     | 2000/2000 | 235

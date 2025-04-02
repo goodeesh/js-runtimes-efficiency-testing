@@ -18,22 +18,28 @@ spec:
         imagePullPolicy: Never
         resources:
           requests:
-            cpu: "1000m"
-            memory: "256Mi"  # Increase memory request
+            cpu: "250m"
+            memory: "512Mi"  # Increase memory request
           limits:
-            cpu: "2000m"
-            memory: "512Mi"    # Significantly increase memory limit
+            cpu: "500m"
+            memory: "768Mi"    # Significantly increase memory limit
         ports:
         - containerPort: 8000
-        startupProbe:        # Add startup probe
+        startupProbe:
           httpGet:
             path: /health
             port: 8000
-          failureThreshold: 30
-          periodSeconds: 10
-        livenessProbe:       # Add liveness probe
+          failureThreshold: 10
+          periodSeconds: 2
+        livenessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 8000
-          initialDelaySeconds: 15
-          periodSeconds: 20
+          initialDelaySeconds: 1
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 0
+          periodSeconds: 2

@@ -138,7 +138,7 @@ const server = http.createServer((req, res) => {
 
     case endpoints.JSON_PROCESSING: {
       const jsonMultiplier = Number(secondParam) || 1;
-      const numberOfElements = jsonMultiplier * 100000;
+      const numberOfElements = jsonMultiplier * 1000;
       const largeArray = [];
       for (let i = 0; i < numberOfElements; i++) {
         largeArray.push({ id: i, value: Math.random() });
@@ -153,6 +153,21 @@ const server = http.createServer((req, res) => {
     }
 
     case endpoints.INSERT_USER: {
+      if (req.method !== "POST") {
+        res.writeHead(405, { "Content-Type": "text/plain" });
+        res.end("405 Method Not Allowed\n");
+        return;
+      }
+      if (!req.headers["content-type"]) {
+        res.writeHead(400, { "Content-Type": "text/plain" });
+        res.end("400 Bad Request\n");
+        return;
+      }
+      if (req.headers["content-type"] !== "application/json") {
+        res.writeHead(415, { "Content-Type": "text/plain" });
+        res.end("415 Unsupported Media Type\n");
+        return;
+      }
       const body: Uint8Array[] = [];
       req.on("data", (chunk) => {
         body.push(chunk);
@@ -181,6 +196,21 @@ const server = http.createServer((req, res) => {
       break;
     }
     case endpoints.DELETE_USER: {
+      if (req.method !== "POST") {
+        res.writeHead(405, { "Content-Type": "text/plain" });
+        res.end("405 Method Not Allowed\n");
+        return;
+      }
+      if (!req.headers["content-type"]) {
+        res.writeHead(400, { "Content-Type": "text/plain" });
+        res.end("400 Bad Request\n");
+        return;
+      }
+      if (req.headers["content-type"] !== "application/json") {
+        res.writeHead(415, { "Content-Type": "text/plain" });
+        res.end("415 Unsupported Media Type\n");
+        return;
+      }
       const body: Uint8Array[] = [];
       req.on("data", (chunk) => {
         body.push(chunk);
@@ -209,6 +239,21 @@ const server = http.createServer((req, res) => {
       break;
     }
     case endpoints.GET_USER: {
+      if (req.method !== "POST") {
+        res.writeHead(405, { "Content-Type": "text/plain" });
+        res.end("405 Method Not Allowed\n");
+        return;
+      }
+      if (!req.headers["content-type"]) {
+        res.writeHead(400, { "Content-Type": "text/plain" });
+        res.end("400 Bad Request\n");
+        return;
+      }
+      if (req.headers["content-type"] !== "application/json") {
+        res.writeHead(415, { "Content-Type": "text/plain" });
+        res.end("415 Unsupported Media Type\n");
+        return;
+      }
       const body: Uint8Array[] = [];
       req.on("data", (chunk) => {
         body.push(chunk);
@@ -237,14 +282,29 @@ const server = http.createServer((req, res) => {
       break;
     }
     case endpoints.UPDATE_USER: {
+      if (req.method !== "POST") {
+        res.writeHead(405, { "Content-Type": "text/plain" });
+        res.end("405 Method Not Allowed\n");
+        return;
+      }
+      if (!req.headers["content-type"]) {
+        res.writeHead(400, { "Content-Type": "text/plain" });
+        res.end("400 Bad Request\n");
+        return;
+      }
+      if (req.headers["content-type"] !== "application/json") {
+        res.writeHead(415, { "Content-Type": "text/plain" });
+        res.end("415 Unsupported Media Type\n");
+        return;
+      }
       const body: Uint8Array[] = [];
       req.on("data", (chunk) => {
         body.push(chunk);
       });
       req.on("end", () => {
         const parsedBody = JSON.parse(Buffer.concat(body).toString());
-        const { username, password, email, name, surname, age } = parsedBody;
-        if (!username || !password || !email || !name || !surname || !age) {
+        const { username, password } = parsedBody;
+        if (!username || !password) {
           res.writeHead(400, { "Content-Type": "text/plain" });
           res.end("400 Bad Request\n");
           return;

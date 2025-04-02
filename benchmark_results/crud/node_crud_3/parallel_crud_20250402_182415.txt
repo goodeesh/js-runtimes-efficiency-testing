@@ -1,0 +1,11 @@
+CRUD Performance Test Results - node - Wed Apr  2 06:24:15 PM CEST 2025
+Server: http://192.168.49.2:30000
+Users: 2000
+Concurrency: 100
+
+Operation  | Success Rate | Operations/sec
+-----------|--------------|--------------
+CREATE     | 2000/2000 | 227
+READ       | 2000/2000 | 258
+UPDATE     | 2000/2000 | 240
+DELETE     | 2000/2000 | 247
