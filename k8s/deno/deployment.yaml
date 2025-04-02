@@ -18,11 +18,11 @@ spec:
         imagePullPolicy: Never
         resources:
           requests:
-            cpu: "250m"
-            memory: "512Mi"  # Increase memory request
+            cpu: "1000m"
+            memory: "1024Mi"
           limits:
-            cpu: "500m"
-            memory: "768Mi"    # Significantly increase memory limit
+            cpu: "1000m"
+            memory: "1024Mi"
         ports:
         - containerPort: 8000
         startupProbe:
