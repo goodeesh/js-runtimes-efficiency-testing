@@ -28,7 +28,7 @@ esac
 # Get the Minikube IP and NodePort for direct access
 MINIKUBE_IP=$(minikube ip)
 if [ $? -ne 0 ]; then
-    echo "Error: Failed to get Minikube IP. Is Minikube running?"
+    echo "Error: Failed to get Minikube IP. Is Minikube running? Try starting it with 'minikube start'."
     exit 1
 fi
 
@@ -55,9 +55,9 @@ run_benchmark() {
 
   echo "Testing $RUNTIME - $endpoint (c=$concurrency, n=$requests)"
 
-  local sanitized_endpoint=${endpoint//\//_} # Replace '/' with '_'
+  local endpointForOutputFile=${endpoint//\//_} # Replace '/' with '_'
   local url="${BASE_URL}/$endpoint"
-  local output_file="$RESULTS_DIR/${sanitized_endpoint}_c${concurrency}.txt"
+  local output_file="$RESULTS_DIR/${endpointForOutputFile}_c${concurrency}.txt"
 
   ./bombardier -c $concurrency -n $requests "$url" > "$output_file"
   

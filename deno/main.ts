@@ -16,7 +16,7 @@ enum endpoints {
   VIDEO_SERVING = "video-serving",
   MEMORY_INTENSIVE = "memory-intensive",
   JSON_PROCESSING = "json-processing",
-  INSERT_USER = "insertUser",
+  CREATE_USER = "createUser",
   DELETE_USER = "deleteUser",
   GET_USER = "getUser",
   UPDATE_USER = "updateUser",
@@ -199,7 +199,7 @@ export default {
         });
       }
 
-      case endpoints.INSERT_USER: {
+      case endpoints.CREATE_USER: {
         try {
           const body = await req.json();
           const { username, password, email, name, surname, age } = body;
@@ -211,7 +211,7 @@ export default {
             });
           }
 
-          await database.insertUser(
+          await database.createUser(
             username,
             password,
             email,

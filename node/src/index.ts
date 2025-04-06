@@ -12,7 +12,7 @@ enum endpoints {
   VIDEO_SERVING = "video-serving",
   MEMORY_INTENSIVE = "memory-intensive",
   JSON_PROCESSING = "json-processing",
-  INSERT_USER = "insertUser",
+  CREATE_USER = "createUser",
   DELETE_USER = "deleteUser",
   GET_USER = "getUser",
   UPDATE_USER = "updateUser",
@@ -152,7 +152,7 @@ const server = http.createServer((req, res) => {
       break;
     }
 
-    case endpoints.INSERT_USER: {
+    case endpoints.CREATE_USER: {
       if (req.method !== "POST") {
         res.writeHead(405, { "Content-Type": "text/plain" });
         res.end("405 Method Not Allowed\n");
@@ -181,7 +181,7 @@ const server = http.createServer((req, res) => {
           return;
         }
         database
-          .insertUser(username, password, email, name, surname, age)
+          .createUser(username, password, email, name, surname, age)
           .then(() => {
             res.writeHead(200, { "Content-Type": "text/plain" });
             res.end("User inserted successfully\n");
