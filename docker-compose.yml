@@ -1,6 +1,17 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   node-app:
     build:
       context: ./node
@@ -12,6 +23,10 @@ services:
     volumes:
       - ./node:/app
       - /app/node_modules
+    environment:
+      DATABASE_URL: postgresql://user:password@postgres:5432/mydb
+    depends_on:
+      - postgres
 
   bun-app:
     build:
@@ -34,4 +49,7 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
     volumes:
-      - ./deno:/app 
+      - ./deno:/app
+
+volumes:
+  postgres_data:

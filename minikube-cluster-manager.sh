@@ -41,21 +41,49 @@ create_cluster() {
     kubectl config use-context "$KUBERNETES_CONTEXT"
     
     # Use Minikube's Docker daemon for building
-    echo "Building Docker image for $RUNTIME inside Minikube..."
+    echo "Setting up Docker environment inside Minikube..."
     eval $(minikube docker-env)
+
+    # Build PostgreSQL image if Node.js is selected
+    if [ "$RUNTIME" == "node" ]; then
+        echo "Building PostgreSQL image inside Minikube..."
+        docker build -t my-postgres:local -f k8s/postgres/Dockerfile k8s/postgres
+    fi
+
+    echo "Building Docker image for $RUNTIME inside Minikube..."
     docker build -t goodeesh/my-$RUNTIME-app:local -f $RUNTIME/Dockerfile ./$RUNTIME
 
     # Create modified deployment files
     echo "Updating deployment manifests for $RUNTIME..."
     mkdir -p temp_k8s/$RUNTIME
     mkdir -p temp_k8s/common
+    mkdir -p temp_k8s/postgres
     
     # Copy only the selected runtime files and common files
     cp -r k8s/$RUNTIME/* temp_k8s/$RUNTIME/
     cp -r k8s/common/* temp_k8s/common/
     
+    # Copy PostgreSQL files if Node.js is selected
+    if [ "$RUNTIME" == "node" ]; then
+        cp -r k8s/postgres/* temp_k8s/postgres/
+    fi
+    
     # Create a custom kustomization.yaml for the selected runtime
-    cat > temp_k8s/kustomization.yaml <<EOF
+    if [ "$RUNTIME" == "node" ]; then
+        cat > temp_k8s/kustomization.yaml <<EOF
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- postgres/deployment.yaml
+- postgres/service.yaml
+- $RUNTIME/deployment.yaml
+- $RUNTIME/service.yaml
+- $RUNTIME/hpa.yaml
+- common/metrics.yaml
+EOF
+    else
+        cat > temp_k8s/kustomization.yaml <<EOF
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
@@ -65,6 +93,7 @@ resources:
 - $RUNTIME/hpa.yaml
 - common/metrics.yaml
 EOF
+    fi
     
     # Detect OS and use appropriate sed syntax
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -301,8 +330,12 @@ clean_apps() {
     # Then try more general approach for anything that might be left
     echo "Cleaning up any remaining resources..."
     
-    # Delete all deployment, service, hpa for any runtime
-    kubectl delete deployment,service,hpa,pod -l "app in (node-app,bun-app,deno-app)" --grace-period=0 --force --timeout=30s 2>/dev/null || true
+    # Delete all deployment, service, hpa for any runtime and postgres
+    kubectl delete deployment,service,hpa,pod -l "app in (node-app,bun-app,deno-app,postgres)" --grace-period=0 --force --timeout=30s 2>/dev/null || true
+    
+    # Delete PostgreSQL PVC and secrets if they exist
+    kubectl delete pvc postgres-pvc --grace-period=0 --force --timeout=30s 2>/dev/null || true
+    kubectl delete secret postgres-secret --grace-period=0 --force --timeout=30s 2>/dev/null || true
     
     # Also delete from k8s directory as fallback
     kubectl delete -k k8s/ --grace-period=0 --force --timeout=30s 2>/dev/null || true

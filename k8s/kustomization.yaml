@@ -11,4 +11,6 @@ resources:
 - node/deployment.yaml
 - node/service.yaml
 - node/hpa.yaml
-- common/metrics.yaml 
+- common/metrics.yaml
+- postgres/deployment.yaml
+- postgres/service.yaml

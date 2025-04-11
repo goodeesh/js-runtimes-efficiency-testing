@@ -1,58 +1,44 @@
-import BetterSQLite3 from "better-sqlite3";
+import { Pool } from "pg";
 import fs from "node:fs";
 import crypto from "node:crypto";
 
 export class Database {
-  #db: any;
+  #db: Pool;
+
   constructor() {
-    const dbFile = "db.sqlite";
-    const dbExists = fs.existsSync(dbFile);
-    this.#db = new BetterSQLite3(dbFile);
-    if (!dbExists) {
-      this.initialize()
-        .then(() => {
-          console.log("Database initialized");
-        })
-        .catch((error) => {
-          console.error("Error initializing database:", error);
-        });
-    }
+    this.#db = new Pool({
+      connectionString:
+        process.env.DATABASE_URL ||
+        "postgresql://user:password@localhost:5432/mydb",
+    });
+    // Initialize database in constructor
+    this.initialize().catch((err) => {
+      console.error("Failed to initialize database:", err);
+    });
   }
 
-  #exec(sql: string): void {
-    this.#db.exec(sql);
+  async #exec(sql: string): Promise<void> {
+    await this.#db.query(sql);
   }
 
-  #prepare(sql: string): any {
-    return this.#db.prepare(sql);
+  async #close(): Promise<void> {
+    await this.#db.end();
   }
 
-  #close(): void {
-    this.#db.close();
-  }
-
-  #all(): any[] {
-    const stmt = this.#prepare(`SELECT * FROM users ORDER BY key`);
-    const result = stmt.all();
-    return result;
+  async #all(): Promise<any[]> {
+    const res = await this.#db.query("SELECT * FROM users ORDER BY key");
+    return res.rows;
   }
 
   async #insert(sql: string, ...params: any[]): Promise<void> {
-    // hash the password
-    if (params[2]) {
-      const hash = crypto.createHash("sha256").update(params[2]).digest("hex");
-      params[2] = hash;
-    }
-    // prepare the statement
-    const stmt = this.#prepare(sql);
-    stmt.run(...params);
+    await this.#db.query(sql, params);
   }
 
   async initialize(): Promise<void> {
-    console.log("Executing SQL statements...");
-    // Execute SQL statements from strings.
-    await this.#exec(`
-        CREATE TABLE users(
+    console.log("Initializing database...");
+    try {
+      await this.#exec(`
+        CREATE TABLE IF NOT EXISTS users(
             key TEXT PRIMARY KEY,
             username TEXT UNIQUE,
             password TEXT,
@@ -62,8 +48,13 @@ export class Database {
             name TEXT,
             surname TEXT,
             age INTEGER
-        ) STRICT
-    `);
+        )
+      `);
+      console.log("Database initialized successfully");
+    } catch (error) {
+      console.error("Error initializing database:", error);
+      throw error;
+    }
   }
 
   async createUser(
@@ -81,7 +72,7 @@ export class Database {
     const key = crypto.randomUUID();
     const hash = crypto.createHash("sha256").update(password).digest("hex");
     await this.#insert(
-      "INSERT INTO users (key, username, password, email, name, surname, age) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO users (key, username, password, email, name, surname, age) VALUES ($1, $2, $3, $4, $5, $6, $7)",
       key,
       username,
       hash,
@@ -93,21 +84,22 @@ export class Database {
   }
 
   async getUser(username: string): Promise<any | null> {
-    const stmt = this.#prepare("SELECT * FROM users WHERE username = ?");
-    const user = stmt.get(username);
-    return user || null;
+    const res = await this.#db.query(
+      "SELECT * FROM users WHERE username = $1",
+      [username]
+    );
+    return res.rows[0] || null;
   }
 
   async updateUser(username: string, newPassword: string): Promise<void> {
     const hash = crypto.createHash("sha256").update(newPassword).digest("hex");
-    const stmt = this.#prepare(
-      "UPDATE users SET password = ? WHERE username = ?"
+    await this.#db.query(
+      "UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE username = $2",
+      [hash, username]
     );
-    stmt.run(hash, username);
   }
 
   async deleteUser(username: string): Promise<void> {
-    const stmt = this.#prepare("DELETE FROM users WHERE username = ?");
-    stmt.run(username);
+    await this.#db.query("DELETE FROM users WHERE username = $1", [username]);
   }
 }
