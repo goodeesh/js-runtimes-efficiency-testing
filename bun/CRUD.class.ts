@@ -1,63 +1,61 @@
-import { Database as BunDatabase } from "bun:sqlite";
+import { Client } from "pg";
 import { existsSync } from "fs";
 
 export class Database {
-  #db: BunDatabase;
+  #db: Client;
 
   constructor() {
-    const dbFile = "db.sqlite";
-    const dbExists = existsSync(dbFile);
-    this.#db = new BunDatabase(dbFile);
+    this.#db = new Client({
+      connectionString:
+        process.env.DATABASE_URL ||
+        "postgresql://user:password@postgres:5432/mydb",
+    });
 
-    if (!dbExists) {
-      try {
-        this.initialize();
-        console.log("Database initialized");
-      } catch (error) {
-        console.error("Error initializing database:", error);
-      }
-    }
+    // Initialize database in constructor
+    this.initialize().catch((err) => {
+      console.error("Failed to initialize database:", err);
+    });
   }
 
-  #exec(sql: string): void {
-    this.#db.exec(sql);
+  async #exec(sql: string): Promise<void> {
+    await this.#db.query(sql);
   }
 
-  #prepare(sql: string) {
-    return this.#db.prepare(sql);
+  async #close(): Promise<void> {
+    await this.#db.end();
   }
 
-  #close(): void {
-    this.#db.close();
-  }
-
-  #all() {
-    const stmt = this.#prepare(`SELECT * FROM users ORDER BY key`);
-    return stmt.all();
+  async #all(): Promise<any[]> {
+    const res = await this.#db.query("SELECT * FROM users ORDER BY key");
+    return res.rows;
   }
 
   async #insert(sql: string, ...params: any[]): Promise<void> {
-    // prepare the statement
-    const stmt = this.#prepare(sql);
-    stmt.run(...params);
+    await this.#db.query(sql, params);
   }
 
-  initialize(): void {
-    console.log("Executing SQL statements...");
-    // Execute SQL statements from strings.
-    this.#exec(`
-      CREATE TABLE users(
-        key TEXT PRIMARY KEY,
-        username TEXT UNIQUE,
-        password TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        email TEXT UNIQUE,
-        name TEXT,
-        surname TEXT,
-        age INTEGER
-      ) STRICT
-    `);
+  async initialize(): Promise<void> {
+    console.log("Initializing database...");
+    try {
+      await this.#db.connect();
+      await this.#exec(`
+        CREATE TABLE IF NOT EXISTS users(
+          key TEXT PRIMARY KEY,
+          username TEXT UNIQUE,
+          password TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          email TEXT UNIQUE,
+          name TEXT,
+          surname TEXT,
+          age INTEGER
+        )
+      `);
+      console.log("Database initialized successfully");
+    } catch (error) {
+      console.error("Error initializing database:", error);
+      throw error;
+    }
   }
 
   async createUser(
@@ -84,7 +82,7 @@ export class Database {
     const hash = Buffer.from(hashBuffer).toString("hex");
 
     await this.#insert(
-      "INSERT INTO users (key, username, password, email, name, surname, age) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO users (key, username, password, email, name, surname, age) VALUES ($1, $2, $3, $4, $5, $6, $7)",
       key,
       username,
       hash,
@@ -95,10 +93,12 @@ export class Database {
     );
   }
 
-  getUser(username: string) {
-    const stmt = this.#prepare("SELECT * FROM users WHERE username = ?");
-    const result = stmt.get(username);
-    return result ?? null;
+  async getUser(username: string): Promise<any | null> {
+    const res = await this.#db.query(
+      "SELECT * FROM users WHERE username = $1",
+      [username]
+    );
+    return res.rows[0] || null;
   }
 
   async updateUser(username: string, newPassword: string): Promise<void> {
@@ -108,14 +108,13 @@ export class Database {
     );
     const hash = Buffer.from(hashBuffer).toString("hex");
 
-    const stmt = this.#prepare(
-      "UPDATE users SET password = ? WHERE username = ?"
+    await this.#db.query(
+      "UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE username = $2",
+      [hash, username]
     );
-    stmt.run(hash, username);
   }
 
-  deleteUser(username: string): void {
-    const stmt = this.#prepare("DELETE FROM users WHERE username = ?");
-    stmt.run(username);
+  async deleteUser(username: string): Promise<void> {
+    await this.#db.query("DELETE FROM users WHERE username = $1", [username]);
   }
 }

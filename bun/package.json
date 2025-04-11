@@ -4,7 +4,11 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@types/bun": "^1.2.5"
+    "@types/bun": "^1.2.5",
+    "@types/pg": "^8.11.1"
+  },
+  "dependencies": {
+    "pg": "^8.11.3"
   },
   "peerDependencies": {
     "typescript": "^5"

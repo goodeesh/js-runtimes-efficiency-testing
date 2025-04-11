@@ -219,7 +219,7 @@ const server = serve({
             });
           }
 
-          const user = database.getUser(username);
+          const user = await database.getUser(username);
 
           return new Response(JSON.stringify(user), {
             headers: { "Content-Type": "application/json" },
@@ -271,7 +271,7 @@ const server = serve({
             });
           }
 
-          database.deleteUser(username);
+          await database.deleteUser(username);
 
           return new Response("User deleted successfully\n", {
             headers: { "Content-Type": "text/plain" },
