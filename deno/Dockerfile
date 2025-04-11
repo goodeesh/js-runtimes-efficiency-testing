@@ -6,4 +6,4 @@ WORKDIR /app
 
 COPY . .
 
-CMD ["deno", "serve", "--allow-net", "--allow-read", "--allow-env", "--allow-ffi", "--allow-write", "main.ts"]
+CMD ["deno", "run", "--allow-net", "--allow-env", "--unstable", "main.ts"]

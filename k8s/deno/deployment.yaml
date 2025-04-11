@@ -12,10 +12,20 @@ spec:
       labels:
         app: deno-app
     spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: alpine
+        command: ['sh', '-c', 'apk add --no-cache netcat-openbsd && until nc -z postgres 5432; do echo waiting for postgres; sleep 2; done;']
       containers:
       - name: deno-app
         image: goodeesh/my-deno-app:local
         imagePullPolicy: Never
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: DATABASE_URL
         resources:
           requests:
             cpu: "1000m"

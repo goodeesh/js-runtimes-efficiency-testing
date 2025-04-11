@@ -44,8 +44,8 @@ create_cluster() {
     echo "Setting up Docker environment inside Minikube..."
     eval $(minikube docker-env)
 
-    # Build PostgreSQL image if Node.js is selected
-    if [ "$RUNTIME" == "node" ]; then
+    # Build PostgreSQL image if Node.js or Deno is selected
+    if [ "$RUNTIME" == "node" ] || [ "$RUNTIME" == "deno" ]; then
         echo "Building PostgreSQL image inside Minikube..."
         docker build -t my-postgres:local -f k8s/postgres/Dockerfile k8s/postgres
     fi
@@ -63,13 +63,13 @@ create_cluster() {
     cp -r k8s/$RUNTIME/* temp_k8s/$RUNTIME/
     cp -r k8s/common/* temp_k8s/common/
     
-    # Copy PostgreSQL files if Node.js is selected
-    if [ "$RUNTIME" == "node" ]; then
+    # Copy PostgreSQL files if Node.js or Deno is selected
+    if [ "$RUNTIME" == "node" ] || [ "$RUNTIME" == "deno" ]; then
         cp -r k8s/postgres/* temp_k8s/postgres/
     fi
     
     # Create a custom kustomization.yaml for the selected runtime
-    if [ "$RUNTIME" == "node" ]; then
+    if [ "$RUNTIME" == "node" ] || [ "$RUNTIME" == "deno" ]; then
         cat > temp_k8s/kustomization.yaml <<EOF
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

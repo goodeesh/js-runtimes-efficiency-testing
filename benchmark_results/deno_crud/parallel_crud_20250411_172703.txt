@@ -1,0 +1,11 @@
+CRUD Performance Test Results - deno - Fri Apr 11 05:27:28 PM CEST 2025
+Server: http://192.168.49.2:32000
+Users: 2000
+Concurrency: 100
+
+Operation  | Success Rate | Operations/sec
+-----------|--------------|--------------
+CREATE     | 2000/2000 | 343.49
+READ       | 2000/2000 | 358.45
+UPDATE     | 2000/2000 | 336.11
+DELETE     | 2000/2000 | 341.59
