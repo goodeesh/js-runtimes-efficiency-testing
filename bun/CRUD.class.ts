@@ -1,16 +1,16 @@
-import { Client } from "pg";
-import { existsSync } from "fs";
+import { Pool } from "pg";
+import fs from "node:fs";
+import crypto from "node:crypto";
 
 export class Database {
-  #db: Client;
+  #db: Pool;
 
   constructor() {
-    this.#db = new Client({
+    this.#db = new Pool({
       connectionString:
         process.env.DATABASE_URL ||
-        "postgresql://user:password@postgres:5432/mydb",
+        "postgresql://user:password@localhost:5432/mydb",
     });
-
     // Initialize database in constructor
     this.initialize().catch((err) => {
       console.error("Failed to initialize database:", err);
@@ -37,18 +37,17 @@ export class Database {
   async initialize(): Promise<void> {
     console.log("Initializing database...");
     try {
-      await this.#db.connect();
       await this.#exec(`
         CREATE TABLE IF NOT EXISTS users(
-          key TEXT PRIMARY KEY,
-          username TEXT UNIQUE,
-          password TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          email TEXT UNIQUE,
-          name TEXT,
-          surname TEXT,
-          age INTEGER
+            key TEXT PRIMARY KEY,
+            username TEXT UNIQUE,
+            password TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            email TEXT UNIQUE,
+            name TEXT,
+            surname TEXT,
+            age INTEGER
         )
       `);
       console.log("Database initialized successfully");
@@ -70,17 +69,8 @@ export class Database {
     if (!username || !password || !email || !name || !surname || !age) {
       throw new Error("Invalid input");
     }
-
-    // Generate UUID
     const key = crypto.randomUUID();
-
-    // Hash the password
-    const hashBuffer = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(password)
-    );
-    const hash = Buffer.from(hashBuffer).toString("hex");
-
+    const hash = crypto.createHash("sha256").update(password).digest("hex");
     await this.#insert(
       "INSERT INTO users (key, username, password, email, name, surname, age) VALUES ($1, $2, $3, $4, $5, $6, $7)",
       key,
@@ -102,12 +92,7 @@ export class Database {
   }
 
   async updateUser(username: string, newPassword: string): Promise<void> {
-    const hashBuffer = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(newPassword)
-    );
-    const hash = Buffer.from(hashBuffer).toString("hex");
-
+    const hash = crypto.createHash("sha256").update(newPassword).digest("hex");
     await this.#db.query(
       "UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE username = $2",
       [hash, username]

@@ -172,7 +172,7 @@ const server = http.createServer((req, res) => {
       req.on("data", (chunk) => {
         body.push(chunk);
       });
-      req.on("end", () => {
+      req.on("end", async () => {
         const parsedBody = JSON.parse(Buffer.concat(body).toString());
         const { username, password, email, name, surname, age } = parsedBody;
         if (!username || !password || !email || !name || !surname || !age) {
@@ -180,7 +180,7 @@ const server = http.createServer((req, res) => {
           res.end("400 Bad Request\n");
           return;
         }
-        database
+        await database
           .createUser(username, password, email, name, surname, age)
           .then(() => {
             res.writeHead(200, { "Content-Type": "text/plain" });
@@ -215,7 +215,7 @@ const server = http.createServer((req, res) => {
       req.on("data", (chunk) => {
         body.push(chunk);
       });
-      req.on("end", () => {
+      req.on("end", async () => {
         const parsedBody = JSON.parse(Buffer.concat(body).toString());
         const { username } = parsedBody;
         if (!username) {
@@ -223,7 +223,7 @@ const server = http.createServer((req, res) => {
           res.end("400 Bad Request\n");
           return;
         }
-        database
+        await database
           .deleteUser(username)
           .then(() => {
             res.writeHead(200, { "Content-Type": "text/plain" });
@@ -258,7 +258,7 @@ const server = http.createServer((req, res) => {
       req.on("data", (chunk) => {
         body.push(chunk);
       });
-      req.on("end", () => {
+      req.on("end", async () => {
         const parsedBody = JSON.parse(Buffer.concat(body).toString());
         const { username } = parsedBody;
         if (!username) {
@@ -266,7 +266,7 @@ const server = http.createServer((req, res) => {
           res.end("400 Bad Request\n");
           return;
         }
-        database
+        await database
           .getUser(username)
           .then((user) => {
             res.writeHead(200, { "Content-Type": "application/json" });
@@ -301,7 +301,7 @@ const server = http.createServer((req, res) => {
       req.on("data", (chunk) => {
         body.push(chunk);
       });
-      req.on("end", () => {
+      req.on("end", async () => {
         const parsedBody = JSON.parse(Buffer.concat(body).toString());
         const { username, password } = parsedBody;
         if (!username || !password) {
@@ -309,7 +309,7 @@ const server = http.createServer((req, res) => {
           res.end("400 Bad Request\n");
           return;
         }
-        database
+        await database
           .updateUser(username, password)
           .then(() => {
             res.writeHead(200, { "Content-Type": "text/plain" });

@@ -1,14 +1,18 @@
-import { Client } from "https://deno.land/x/postgres@v0.17.0/mod.ts";
-import { encodeHex } from "https://deno.land/std@0.215.0/encoding/hex.ts";
+// Import pg using npm compatibility in Deno
+import pg from "npm:pg";
+
+// Correctly access the Pool class
+const { Pool } = pg;
 
 export class Database {
-  #db: Client;
+  #db: Pool;
 
   constructor() {
-    this.#db = new Client(
-      Deno.env.get("DATABASE_URL") ||
-        "postgresql://user:password@postgres:5432/mydb"
-    );
+    this.#db = new Pool({
+      connectionString:
+        Deno.env.get("DATABASE_URL") ||
+        "postgresql://user:password@postgres:5432/mydb",
+    });
 
     // Initialize database in constructor
     this.initialize().catch((err) => {
@@ -17,7 +21,7 @@ export class Database {
   }
 
   async #exec(sql: string): Promise<void> {
-    await this.#db.queryArray(sql);
+    await this.#db.query(sql);
   }
 
   async #close(): Promise<void> {
@@ -25,31 +29,28 @@ export class Database {
   }
 
   async #all(): Promise<any[]> {
-    const result = await this.#db.queryObject(
-      "SELECT * FROM users ORDER BY key"
-    );
-    return result.rows;
+    const res = await this.#db.query("SELECT * FROM users ORDER BY key");
+    return res.rows;
   }
 
   async #insert(sql: string, ...params: any[]): Promise<void> {
-    await this.#db.queryArray(sql, params);
+    await this.#db.query(sql, params);
   }
 
   async initialize(): Promise<void> {
     console.log("Initializing database...");
     try {
-      await this.#db.connect();
       await this.#exec(`
         CREATE TABLE IF NOT EXISTS users(
-          key TEXT PRIMARY KEY,
-          username TEXT UNIQUE,
-          password TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          email TEXT UNIQUE,
-          name TEXT,
-          surname TEXT,
-          age INTEGER
+            key TEXT PRIMARY KEY,
+            username TEXT UNIQUE,
+            password TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            email TEXT UNIQUE,
+            name TEXT,
+            surname TEXT,
+            age INTEGER
         )
       `);
       console.log("Database initialized successfully");
@@ -72,15 +73,15 @@ export class Database {
       throw new Error("Invalid input");
     }
 
-    // Generate UUID using Deno's crypto API
+    // Use same UUID generation method
     const key = crypto.randomUUID();
 
-    // Hash the password
-    const hashBuffer = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(password)
-    );
-    const hash = encodeHex(hashBuffer);
+    // Use the same hashing method as Node/Bun
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
     await this.#insert(
       "INSERT INTO users (key, username, password, email, name, surname, age) VALUES ($1, $2, $3, $4, $5, $6, $7)",
@@ -95,29 +96,28 @@ export class Database {
   }
 
   async getUser(username: string): Promise<any | null> {
-    const result = await this.#db.queryObject(
+    const res = await this.#db.query(
       "SELECT * FROM users WHERE username = $1",
       [username]
     );
-    return result.rows[0] || null;
+    return res.rows[0] || null;
   }
 
   async updateUser(username: string, newPassword: string): Promise<void> {
-    const hashBuffer = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(newPassword)
-    );
-    const hash = encodeHex(hashBuffer);
+    // Use the same hashing method as Node/Bun
+    const encoder = new TextEncoder();
+    const data = encoder.encode(newPassword);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
-    await this.#db.queryArray(
+    await this.#db.query(
       "UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE username = $2",
       [hash, username]
     );
   }
 
   async deleteUser(username: string): Promise<void> {
-    await this.#db.queryArray("DELETE FROM users WHERE username = $1", [
-      username,
-    ]);
+    await this.#db.query("DELETE FROM users WHERE username = $1", [username]);
   }
 }

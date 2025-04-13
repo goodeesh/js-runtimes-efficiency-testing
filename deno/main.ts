@@ -244,7 +244,7 @@ Deno.serve({ port: 8000 }, async (req: Request): Promise<Response> => {
           });
         }
 
-        const user = database.getUser(username);
+        const user = await database.getUser(username);
 
         return new Response(JSON.stringify(user), {
           headers: { "Content-Type": "application/json" },
@@ -296,7 +296,7 @@ Deno.serve({ port: 8000 }, async (req: Request): Promise<Response> => {
           });
         }
 
-        database.deleteUser(username);
+        await database.deleteUser(username);
 
         return new Response("User deleted successfully\n", {
           headers: { "Content-Type": "text/plain" },
