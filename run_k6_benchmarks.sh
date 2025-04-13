@@ -40,7 +40,7 @@ BASE_URL="http://$MINIKUBE_IP:$NODE_PORT"
 export BASE_URL
 
 # Test configuration
-NUM_USERS=20000      # total iterations
+NUM_USERS=50000      # total iterations
 CONCURRENCY=1000     # number of virtual users (VUs)
 export NUM_USERS
 export CONCURRENCY
